@@ -6,8 +6,75 @@
     <string name="btn_saved_inspections">Inspecciones guardadas</string>
     <string name="dev_version_label">Versión local de desarrollo</string>
     <string name="title_new_inspection">Nueva inspección</string>
+    <string name="title_edit_inspection">Editar borrador</string>
     <string name="title_saved_inspections">Inspecciones guardadas</string>
     <string name="pending_implementation">Función pendiente de implementación</string>
     <string name="btn_back_to_home">Volver al inicio</string>
     <string name="cd_back_button">Regresar</string>
+
+    <!-- Tipos / Motivos de inspección -->
+    <string name="type_inventory">Inventario</string>
+    <string name="type_sale">Venta</string>
+    <string name="type_receipt">Recepción</string>
+    <string name="type_delivery">Entrega</string>
+    <string name="type_unselected">Sin motivo seleccionado</string>
+
+    <!-- Etiquetas del formulario -->
+    <string name="label_container_id">Identificador del contenedor *</string>
+    <string name="hint_container_id">Ej. CSQU3054383</string>
+    <string name="label_iso_code">Código ISO (opcional)</string>
+    <string name="hint_iso_code">Ej. 45G1</string>
+    <string name="label_inspection_type">Motivo de la inspección *</string>
+    <string name="label_inspected_at">Fecha y hora de inspección *</string>
+    <string name="label_observations">Observaciones (opcional)</string>
+    <string name="hint_observations">Ingrese detalles adicionales del estado o la carga&#8230;</string>
+    <string name="normalized_preview">Valor normalizado: %1$s</string>
+    <string name="local_only_badge">Solo en este teléfono</string>
+
+    <!-- Acciones -->
+    <string name="btn_save_draft">Guardar borrador en este teléfono</string>
+    <string name="btn_change_date_time">Cambiar fecha/hora</string>
+    <string name="btn_delete_draft">Eliminar borrador</string>
+    <string name="btn_retry">Reintentar</string>
+
+    <!-- Mensajes de Estado y Banner -->
+    <string name="draft_saved_success">Borrador guardado localmente en este teléfono.</string>
+    <string name="draft_save_error">Ocurrió un error al guardar el borrador localmente.</string>
+    <string name="draft_update_not_found">El borrador ya no existe. Los cambios siguen en el formulario y no se ha creado otro registro.</string>
+    <string name="draft_deleted_success">Borrador eliminado.</string>
+    <string name="draft_load_error">Error al cargar el borrador local desde la base de datos.</string>
+    <string name="draft_not_found">El borrador solicitado ya no existe en este dispositivo.</string>
+    <string name="drafts_list_load_error">Ocurrió un error al leer los borradores desde el almacenamiento.</string>
+    <string name="draft_status_complete">Borrador completo</string>
+    <string name="draft_status_incomplete">Borrador incompleto / Con observaciones</string>
+    <string name="draft_warning_notice">Este borrador se almacena únicamente de forma local en este dispositivo. No se ha validado ni enviado a WordPress.</string>
+
+    <!-- Diálogo de Cambios Sin Guardar -->
+    <string name="dialog_unsaved_changes_title">Cambios sin guardar</string>
+    <string name="dialog_unsaved_changes_message">Tienes cambios no guardados en este borrador. ¿Deseas guardarlos antes de salir?</string>
+    <string name="btn_save">Guardar borrador</string>
+    <string name="btn_discard">Descartar cambios</string>
+    <string name="btn_cancel">Continuar editando</string>
+
+    <!-- Diálogo de Confirmación de Eliminación -->
+    <string name="dialog_delete_draft_title">¿Eliminar borrador?</string>
+    <string name="dialog_delete_draft_message">Esta acción eliminará el borrador local. ¿Deseas continuar?</string>
+    <string name="btn_delete">Eliminar</string>
+
+    <!-- Pantalla de Inspecciones Guardadas -->
+    <string name="empty_drafts_title">No hay borradores guardados</string>
+    <string name="empty_drafts_subtitle">Crea una nueva inspección para guardarla como borrador en este teléfono.</string>
+    <string name="drafts_header_subtitle">Borradores almacenados localmente en este dispositivo.</string>
+    <string name="no_container_identifier">Sin identificador</string>
+
+    <!-- Errores de Validación -->
+    <string name="error_container_empty">El identificador de contenedor no puede estar vacío.</string>
+    <string name="error_container_length">El identificador debe tener exactamente 11 caracteres (ej. CSQU3054383).</string>
+    <string name="error_container_category_u">El cuarto carácter debe ser la letra \'U\' para contenedores de carga.</string>
+    <string name="error_container_format">Formato inválido. Debe tener 3 letras, la letra \'U\' y 7 dígitos (ej. CSQU3054383).</string>
+    <string name="error_container_check_digit">Dígito de control ISO 6346 incorrecto (esperado: %1$d, ingresado: %2$d).</string>
+    <string name="error_iso_code_format">El código ISO debe tener exactamente 4 caracteres alfanuméricos (ej. 45G1).</string>
+    <string name="error_observations_too_long">Las observaciones superan el límite de 10.000 caracteres.</string>
+    <string name="error_inspection_type_required">Debe seleccionar un motivo de inspección.</string>
+    <string name="error_inspection_type_invalid">Motivo de inspección no válido.</string>
 </resources>

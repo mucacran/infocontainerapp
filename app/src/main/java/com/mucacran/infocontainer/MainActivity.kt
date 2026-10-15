@@ -9,10 +9,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.ViewModelProvider
+import com.mucacran.infocontainer.data.InspectionDatabaseHelper
+import com.mucacran.infocontainer.data.InspectionDraftRepository
+import com.mucacran.infocontainer.data.SqliteInspectionDraftRepository
+import com.mucacran.infocontainer.ui.DraftListScreen
 import com.mucacran.infocontainer.ui.HomeScreen
-import com.mucacran.infocontainer.ui.PlaceholderScreen
+import com.mucacran.infocontainer.ui.InspectionFormScreen
+import com.mucacran.infocontainer.ui.InspectionFormState
 import com.mucacran.infocontainer.ui.theme.InfoContainerTheme
 
 enum class Screen {
@@ -22,61 +26,73 @@ enum class Screen {
 }
 
 class MainActivity : ComponentActivity() {
+    private lateinit var repository: InspectionDraftRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val dbHelper = InspectionDatabaseHelper(applicationContext)
+        repository = SqliteInspectionDraftRepository(dbHelper)
+        val formState = ViewModelProvider(this)[InspectionFormState::class.java]
+
         enableEdgeToEdge()
         setContent {
             InfoContainerTheme {
-                InfoContainerApp()
+                InfoContainerApp(repository = repository, formState = formState)
             }
         }
     }
 }
 
 @Composable
-fun InfoContainerApp() {
+fun InfoContainerApp(
+    repository: InspectionDraftRepository,
+    formState: InspectionFormState
+) {
     var currentScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
+    var selectedDraftId by rememberSaveable { mutableStateOf<String?>(null) }
+    var previousScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
 
     when (currentScreen) {
         Screen.HOME -> {
             HomeScreen(
-                onNavigateToNewInspection = { currentScreen = Screen.NEW_INSPECTION },
-                onNavigateToSavedInspections = { currentScreen = Screen.SAVED_INSPECTIONS }
+                onNavigateToNewInspection = {
+                    if (!formState.open(null)) return@HomeScreen
+                    selectedDraftId = null
+                    previousScreen = Screen.HOME
+                    currentScreen = Screen.NEW_INSPECTION
+                },
+                onNavigateToSavedInspections = {
+                    currentScreen = Screen.SAVED_INSPECTIONS
+                }
             )
         }
         Screen.NEW_INSPECTION -> {
-            PlaceholderScreen(
-                title = stringResource(id = R.string.title_new_inspection),
-                onBack = { currentScreen = Screen.HOME }
+            InspectionFormScreen(
+                repository = repository,
+                formState = formState,
+                draftId = selectedDraftId,
+                onBack = {
+                    if (formState.canLeave) currentScreen = previousScreen
+                }
             )
         }
         Screen.SAVED_INSPECTIONS -> {
-            PlaceholderScreen(
-                title = stringResource(id = R.string.title_saved_inspections),
+            DraftListScreen(
+                repository = repository,
+                onSelectDraft = { draftId ->
+                    if (!formState.open(draftId)) return@DraftListScreen
+                    selectedDraftId = draftId
+                    previousScreen = Screen.SAVED_INSPECTIONS
+                    currentScreen = Screen.NEW_INSPECTION
+                },
+                onNewInspection = {
+                    if (!formState.open(null)) return@DraftListScreen
+                    selectedDraftId = null
+                    previousScreen = Screen.SAVED_INSPECTIONS
+                    currentScreen = Screen.NEW_INSPECTION
+                },
                 onBack = { currentScreen = Screen.HOME }
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    InfoContainerTheme {
-        HomeScreen(
-            onNavigateToNewInspection = {},
-            onNavigateToSavedInspections = {}
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PlaceholderScreenPreview() {
-    InfoContainerTheme {
-        PlaceholderScreen(
-            title = stringResource(id = R.string.title_new_inspection),
-            onBack = {}
-        )
     }
 }
