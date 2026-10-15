@@ -54,6 +54,8 @@ import androidx.lifecycle.viewModelScope
 import com.mucacran.infocontainer.R
 import com.mucacran.infocontainer.data.DraftNotFoundException
 import com.mucacran.infocontainer.data.InspectionDraftRepository
+import com.mucacran.infocontainer.data.LocalPhotoStore
+import com.mucacran.infocontainer.data.cleanUnreferencedSafely
 import com.mucacran.infocontainer.model.InspectionType
 import com.mucacran.infocontainer.util.ContainerValidator
 import com.mucacran.infocontainer.util.DateTimeUtils
@@ -67,10 +69,12 @@ fun InspectionFormScreen(
     draftId: String?,
     onBack: () -> Unit,
     formState: InspectionFormState,
+    photoStore: LocalPhotoStore,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val photoActions = rememberPhotoActions(formState, photoStore, repository)
 
     // Textos precargados para Compose Lint
     val savedSuccessMsg = stringResource(id = R.string.draft_saved_success)
@@ -86,6 +90,10 @@ fun InspectionFormScreen(
     val hasUnsavedChanges = formState.hasUnsavedChanges
     var showExitDialog by rememberSaveable { mutableStateOf(false) }
     var exitAfterSave by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(formState.photoErrorMessage) {
+        formState.photoErrorMessage?.let { snackbarHostState.showSnackbar(it) }
+    }
 
     LaunchedEffect(formState, draftId) {
         formState.ensureOpened(draftId)
@@ -125,7 +133,16 @@ fun InspectionFormScreen(
         exitAfterSave = leaveAfterSuccess
         showExitDialog = false
         formState.viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
-            formState.save(repository)
+            val previousPhotos = formState.lastSavedContent.photos
+            val photoSession = formState.photoSessionId
+            val result = formState.save(repository)
+            if (result?.getOrDefault(false) == true) {
+                runCatching { photoStore.clearSelection(photoSession) }
+                val savedIds = formState.lastSavedContent.photos.map { it.id }.toSet()
+                previousPhotos.filterNot { it.id in savedIds }.forEach { photo ->
+                    photoStore.cleanUnreferencedSafely(photo.id, repository)
+                }
+            }
         }
     }
 
@@ -160,6 +177,17 @@ fun InspectionFormScreen(
                         onClick = {
                             if (formState.canLeave) {
                                 showExitDialog = false
+                                val captureId = formState.pendingCaptureId
+                                val photoSession = formState.photoSessionId
+                                val pendingPhotos = formState.discardChanges()
+                                formState.viewModelScope.launch {
+                                    if (runCatching { photoStore.clearSelection(photoSession) }.isSuccess) {
+                                        pendingPhotos.forEach { photo ->
+                                            photoStore.cleanUnreferencedSafely(photo.id, repository)
+                                        }
+                                    }
+                                    captureId?.let { runCatching { photoStore.cancelCapture(it) } }
+                                }
                                 onBack()
                             }
                         },
@@ -287,6 +315,17 @@ fun InspectionFormScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    PhotographsSection(formState, photoStore, photoActions) { photo ->
+                        formState.viewModelScope.launch(start = CoroutineStart.UNDISPATCHED) {
+                            val forgotten = formState.addPhotos {
+                                photoStore.forgetSelectionPhoto(formState.photoSessionId, photo.id)
+                                emptyList()
+                            }
+                            if (forgotten.isSuccess && formState.removePhoto(photo.id) && formState.lastSavedContent.photos.none { it.id == photo.id }) {
+                                photoStore.cleanUnreferencedSafely(photo.id, repository)
+                            }
+                        }
+                    }
                     // Banner informativo
                     Card(
                         colors = CardDefaults.cardColors(

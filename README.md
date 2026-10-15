@@ -61,7 +61,7 @@ adb shell am start -n com.mucacran.infocontainer/.MainActivity
    - **Creación y Edición Separadas:** Las altas usan `INSERT` estricto. Las ediciones usan `UPDATE WHERE id = ?` y exigen una fila afectada; si el borrador desapareció, se informa el error y se conserva el formulario sin recrearlo.
    - **Guardado Protegido:** Durante la escritura se bloquean campos, motivo, fecha/hora, guardado repetido y salida. La instantánea normalizada enviada a SQLite pasa a ser la referencia solo tras éxito; un fallo conserva contenido y referencia anterior.
    - **Detección Fiel de Cambios Sin Guardar:** Comparación estructural completa campo a campo (`FormContent`), evitando colisiones de hash (ej. *"Aa"* vs *"BB"*). El diálogo de confirmación se activa al intentar salir con cambios pendientes.
-   - **Política de Versiones:** El esquema de producción sigue en v1. Toda transición no soportada se rechaza explícitamente; no hay una migración v2 implementada. La prueba de apertura con v2 es únicamente un intento sintético para comprobar el rechazo y la conservación de datos, estructura y versión.
+   - **Política de Versiones:** El esquema actual es v2. La migración real v1→v2 añade únicamente `inspection_photos`, conservando la tabla y los registros anteriores. Cualquier otra transición se rechaza sin adelantar la versión ni borrar datos.
 
 3. **Lista de Borradores Guardados:**
    - Sustitución de la pantalla provisional por `DraftListScreen`.
@@ -78,8 +78,9 @@ Actualmente la aplicación cuenta con la siguiente configuración en `AndroidMan
 - `android:fullBackupContent="@xml/backup_rules"`
 
 ### Qué incluye actualmente:
-- En Android 12+ (API 31+), `data_extraction_rules.xml` contiene `cloud-backup` sin exclusiones activas; `device-transfer` está comentado. La base SQLite privada (`/databases/infocontainer.db`) queda permitida por la configuración de respaldo.
-- En API 26 a 30, `backup_rules.xml` tampoco contiene exclusiones activas de la base de datos.
+- La política previa sigue permitiendo respaldar la base SQLite privada (`/databases/infocontainer.db`). No se amplió deliberadamente su inclusión en nube.
+- Las fotografías y los diarios de importación se guardan en `noBackupFilesDir` y quedan fuera del respaldo Android. Las capturas temporales `files/camera_capture/` se excluyen explícitamente en `backup_rules.xml` (API 26–30) y en las reglas de nube y transferencia de Android 12+.
+- Una restauración de la BD sin fotografías puede recuperar metadatos cuyos archivos ya no estén en ese teléfono. La interfaz muestra “Fotografía no disponible”; es posible quitar esa referencia o seleccionar de nuevo el original. El guardado no crea referencias nuevas a archivos ausentes.
 - Estos XML y `allowBackup="true"` permiten el respaldo Android; no demuestran que se haya realizado una copia ni una restauración. Ambas comprobaciones siguen pendientes y dependen del sistema y de la configuración del dispositivo.
 - **Nota:** La política definitiva de respaldo (si excluir o mantener la BD local en Google Cloud Backup) queda pendiente de decisión formal por parte de Sergio y el equipo.
 
@@ -148,12 +149,41 @@ El cierre de verificación visual Android y ambos casos de rotación queda pendi
 
 ---
 
+## Fotografías locales — implementación actual
+
+La sección Fotografías aparece antes de los campos manuales. Permite comenzar con una sola imagen, añadir más, revisar miniaturas, abrir una vista ampliada y quitar adjuntos. No exige número de contenedor. Las fotos deben pertenecer al mismo contenedor y se identifican como locales, sin análisis ni envío.
+
+- **Cámara:** `ActivityResultContracts.TakePicture` abre la cámara del sistema con una URI de salida completa. No se usa la miniatura del resultado ni se pide permiso de cámara a la app. El `FileProvider` no se exporta y únicamente expone `files/camera_capture/`; no expone el resto del almacenamiento privado.
+- **Selector:** selección múltiple de imágenes con `PickMultipleVisualMedia`; AndroidX utiliza el selector disponible y recurre a documentos del sistema en dispositivos compatibles con el mínimo API 26. No se piden permisos amplios de lectura de galería. Sólo se procesan las imágenes que el usuario selecciona.
+- **Originales:** copia byte por byte a `noBackupFilesDir/inspection_photos/`, sin modificar, comprimir ni eliminar el original de galería. Copia, validación y decodificación se ejecutan en `Dispatchers.IO`. Se valida imagen legible y MIME real JPEG, PNG o WebP. HEIC/HEIF, GIF y otros formatos se rechazan con un mensaje para seleccionar un formato admitido.
+- **Límites:** 12 fotos por borrador, 30 MiB por foto, 150 MiB en total y 40 millones de píxeles por imagen. Se reserva un margen libre de 16 MiB y se informa de fallos de espacio o lectura. Las vistas usan decodificación reducida (320 píxeles de lado máximo para miniaturas y 1600 para ampliación) y respetan la orientación EXIF; el archivo completo no cambia.
+- **Persistencia:** SQLite guarda IDs locales y metadatos ordenados, no bitmaps ni URIs externas. Se copian y validan los archivos antes de vincularlos; campos y vínculos se escriben en una sola transacción. Un error revierte los cambios SQLite y conserva el formulario y sus fotos para reintentar. Editar una fila inexistente nunca la recrea.
+- **Ciclo de vida:** `SavedStateHandle` conserva contenido, referencia, IDs de fotos, sesión y captura pendiente al recrearse la Activity/proceso desde el estado Android. Un diario `AtomicFile` privado registra URIs seleccionadas, IDs reservados y progreso; permite recuperar copias terminadas y reintentar las pendientes, con permisos persistentes cuando el proveedor los admite. Las copias terminadas ya no dependen de la URI externa. Una concesión perdida en una copia aún pendiente se informa para volver a seleccionar; no se examinan otras fotos del teléfono.
+- **Guardado y descarte:** adjuntar o quitar cambia el estado pendiente; únicamente Guardar confirma la referencia persistida. Descartar conserva las fotos que pertenecían a la referencia guardada. Quitar una foto guardada no borra su archivo privado hasta confirmar el guardado del cambio. La limpieza usa sólo UUID propios con consulta previa de referencias; una consulta o limpieza dudosa conserva el archivo. No hay barrido general de galería, bases ni archivos del dispositivo.
+- **Cancelación:** cancelar cámara/selector no crea filas ni adjuntos vacíos. Una captura cuya importación falla conserva su temporal para Reintentar o Quitar captura pendiente. Una selección parcialmente copiada conserva las imágenes válidas y ofrece reintento. Cerrar una selección pendiente retira sus metadatos/permisos, sin borrar originales.
+- **Cierre/reapertura:** después de Guardar, texto y fotografías se recuperan desde SQLite y archivos privados al abrir el borrador. La restauración de cambios sin guardar depende del estado de instancia entregado por Android; no equivale a guardar un borrador ni garantiza recuperación tras retirar la tarea, borrar almacenamiento o desinstalar.
+
+Las bases, capturas y carpetas de fotos/diarios están excluidas de Git. No se añadieron servicios de red ni dependencias para análisis o transferencia.
+
+### Comprobaciones manuales de cámara y selector en teléfono
+
+Usar únicamente imágenes de prueba propias. La instalación autorizada debe ser incremental (`adb -s SERIAL install -r app/build/outputs/apk/debug/app-debug.apk`); si Android exige desinstalar o borrar datos, detenerse.
+
+1. Abrir Nueva inspección sin escribir un contenedor. Cancelar cámara y selector: la cantidad debe seguir en cero y no aparecer un borrador guardado nuevo.
+2. Tomar una foto de un objeto de prueba. Verificar miniatura y ampliación con orientación correcta. Añadir dos imágenes de prueba desde el selector; comprobar cantidad y contenido. No explorar fotografías personales ajenas a la prueba.
+3. Cambiar campos manuales, motivo y fecha/hora. Girar a horizontal y volver a vertical. Comprobar campos y fotos; Atrás debe mostrar “Cambios sin guardar”. Continuar editando debe conservar todo.
+4. Guardar, cerrar la aplicación y volver a abrir ese borrador. Comprobar texto y las tres imágenes. Quitar una foto y salir con Descartar: al reabrir debe seguir guardada y el original de galería debe permanecer intacto.
+5. En ese borrador existente, cambiar observaciones y adjuntar otra imagen sin guardar. Repetir ambos giros y comprobar la advertencia al salir. Guardar la edición y reabrir; comprobar las mismas imágenes y que no se duplicó el borrador.
+6. Para recreación del proceso mientras está abierta la cámara/selector: con la app externa en primer plano, ejecutar `adb -s SERIAL shell am kill com.mucacran.infocontainer` (sin `pm clear` ni desinstalación); volver con una imagen de prueba o cancelar y comprobar campos, referencia, IDs y ausencia de duplicados. Esta comprobación es distinta de girar o recrear únicamente la Activity.
+
+La comprobación de respaldo/restauración sigue pendiente. La política conjunta de BD respaldable y fotografías excluidas requiere decisión del equipo; esta etapa no realiza copias ni restauraciones.
+
 ## Limitaciones y Siguiente Paso
 
 ### Limitaciones Actuales
 - Esta etapa **NO** realiza llamadas de red, sincronización ni autenticación con la API REST de WordPress.
 - La app escribe borradores en su almacenamiento privado local; Android puede incluirlos en respaldos según la configuración descrita arriba. No existe sincronización propia hacia WordPress.
-- No se incluye captura de fotografías, análisis por IA ni certificación de condición estructural del contenedor.
+- Se incluye captura y selección local de fotografías. El análisis por IA y la certificación de condición estructural permanecen fuera del alcance.
 
 ### Siguiente Paso
 - Completar las verificaciones Android pendientes antes de cerrar esta etapa. El contrato REST con WordPress (módulos `InfoContainer_Validator` e `InfoContainer_REST_API`) permanece como trabajo posterior, fuera de este encargo.

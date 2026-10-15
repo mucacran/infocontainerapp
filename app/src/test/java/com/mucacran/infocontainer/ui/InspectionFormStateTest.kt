@@ -309,7 +309,7 @@ class InspectionFormStateTest {
     }
 
     @Test
-    fun cancelledWriteReleasesTheGuardPreservingContentWithoutPublishingAFailure() = runBlocking {
+    fun cancelledWriteReconcilesBeforeAllowingAnotherCreate() = runBlocking {
         val repository = ControlledDraftRepository()
         repository.writeGate = CompletableDeferred()
         val state = stateFor()
@@ -323,12 +323,22 @@ class InspectionFormStateTest {
         save.join()
 
         assertFalse(state.isSaving)
-        assertTrue(state.canEdit)
+        assertFalse(state.canEdit)
+        assertFalse(state.canLeave)
         assertEquals(pending, state.content)
         assertEquals(reference, state.lastSavedContent)
-        assertTrue(state.hasUnsavedChanges)
         assertEquals(0, state.completedSaveCount)
         assertNull(state.pendingSaveResult)
+
+        state.loadIfNeeded(repository)
+
+        assertTrue(state.canEdit)
+        assertTrue(state.canLeave)
+        assertTrue(state.hasUnsavedChanges)
+        assertEquals(pending, state.content)
+        assertEquals(reference, state.lastSavedContent)
+        assertTrue(state.consumeSaveResult()!!.isFailure)
+        assertEquals(1, repository.createCalls)
     }
 
     private fun stateFor(id: String? = null) = InspectionFormState().apply { open(id) }

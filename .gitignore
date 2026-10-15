@@ -13,3 +13,13 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Runtime databases and photographs must stay on the device, never in Git.
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+**/inspection_photos/
+**/camera_capture/
+**/inspection_photo_sessions/

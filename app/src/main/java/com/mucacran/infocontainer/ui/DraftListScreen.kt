@@ -47,6 +47,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mucacran.infocontainer.R
 import com.mucacran.infocontainer.data.InspectionDraftRepository
+import com.mucacran.infocontainer.data.LocalPhotoStore
+import com.mucacran.infocontainer.data.cleanUnreferencedSafely
 import com.mucacran.infocontainer.model.InspectionDraft
 import com.mucacran.infocontainer.model.InspectionType
 import com.mucacran.infocontainer.util.ContainerValidator
@@ -66,6 +68,7 @@ fun DraftListScreen(
     onSelectDraft: (String) -> Unit,
     onNewInspection: () -> Unit,
     onBack: () -> Unit,
+    photoStore: LocalPhotoStore,
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -108,11 +111,15 @@ fun DraftListScreen(
                 Button(
                     onClick = {
                         val id = targetId
+                        val photos = (uiState as? DraftListUiState.Success)?.drafts?.firstOrNull { it.id == id }?.photos.orEmpty()
                         draftToDelete = null
                         coroutineScope.launch {
                             val deleteResult = repository.deleteDraft(id)
                             deleteResult.fold(
                                 onSuccess = {
+                                    photos.forEach { photo ->
+                                        photoStore.cleanUnreferencedSafely(photo.id, repository)
+                                    }
                                     refreshDrafts()
                                     snackbarHostState.showSnackbar(draftDeletedSuccessMsg)
                                 },

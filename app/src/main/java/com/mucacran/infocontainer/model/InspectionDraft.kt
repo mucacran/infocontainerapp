@@ -12,5 +12,6 @@ data class InspectionDraft(
     val inspectedAt: String = ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
     val observations: String = "",
     val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val photos: List<DraftPhoto> = emptyList()
 )

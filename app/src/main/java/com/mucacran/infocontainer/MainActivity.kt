@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModelProvider
 import com.mucacran.infocontainer.data.InspectionDatabaseHelper
 import com.mucacran.infocontainer.data.InspectionDraftRepository
+import com.mucacran.infocontainer.data.LocalPhotoStore
 import com.mucacran.infocontainer.data.SqliteInspectionDraftRepository
 import com.mucacran.infocontainer.ui.DraftListScreen
 import com.mucacran.infocontainer.ui.HomeScreen
@@ -31,13 +32,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val dbHelper = InspectionDatabaseHelper(applicationContext)
-        repository = SqliteInspectionDraftRepository(dbHelper)
+        val photoStore = LocalPhotoStore(applicationContext)
+        repository = SqliteInspectionDraftRepository(dbHelper, photoExists = photoStore::exists)
         val formState = ViewModelProvider(this)[InspectionFormState::class.java]
 
         enableEdgeToEdge()
         setContent {
             InfoContainerTheme {
-                InfoContainerApp(repository = repository, formState = formState)
+                InfoContainerApp(repository = repository, formState = formState, photoStore = photoStore)
             }
         }
     }
@@ -46,7 +48,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun InfoContainerApp(
     repository: InspectionDraftRepository,
-    formState: InspectionFormState
+    formState: InspectionFormState,
+    photoStore: LocalPhotoStore
 ) {
     var currentScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
     var selectedDraftId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -70,6 +73,7 @@ fun InfoContainerApp(
             InspectionFormScreen(
                 repository = repository,
                 formState = formState,
+                photoStore = photoStore,
                 draftId = selectedDraftId,
                 onBack = {
                     if (formState.canLeave) currentScreen = previousScreen
@@ -79,6 +83,7 @@ fun InfoContainerApp(
         Screen.SAVED_INSPECTIONS -> {
             DraftListScreen(
                 repository = repository,
+                photoStore = photoStore,
                 onSelectDraft = { draftId ->
                     if (!formState.open(draftId)) return@DraftListScreen
                     selectedDraftId = draftId
