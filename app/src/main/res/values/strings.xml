@@ -1,3 +1,13 @@
 <resources>
     <string name="app_name">InfoContainer</string>
+    <string name="app_subtitle">Registro e inspección de contenedores</string>
+    <string name="company_name">Mucacrán S.A.S.</string>
+    <string name="btn_new_inspection">Nueva inspección</string>
+    <string name="btn_saved_inspections">Inspecciones guardadas</string>
+    <string name="dev_version_label">Versión local de desarrollo</string>
+    <string name="title_new_inspection">Nueva inspección</string>
+    <string name="title_saved_inspections">Inspecciones guardadas</string>
+    <string name="pending_implementation">Función pendiente de implementación</string>
+    <string name="btn_back_to_home">Volver al inicio</string>
+    <string name="cd_back_button">Regresar</string>
 </resources>
