@@ -90,6 +90,7 @@ fun InspectionFormScreen(
     val hasUnsavedChanges = formState.hasUnsavedChanges
     var showExitDialog by rememberSaveable { mutableStateOf(false) }
     var exitAfterSave by rememberSaveable { mutableStateOf(false) }
+    var showRecoveryDialog by rememberSaveable { mutableStateOf(formState.recoveryPending) }
 
     LaunchedEffect(formState.photoErrorMessage) {
         formState.photoErrorMessage?.let { snackbarHostState.showSnackbar(it) }
@@ -102,9 +103,30 @@ fun InspectionFormScreen(
         }
     }
 
+    if (showRecoveryDialog && formState.recoveryPending) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Trabajo pendiente recuperado") },
+            text = { Text("Se recuperaron los campos y fotografías que estaban pendientes. ¿Quieres continuar editándolos?") },
+            confirmButton = {
+                Button(onClick = { showRecoveryDialog = false; formState.recoverPersistent() }) { Text("Recuperar") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    val pending = formState.discardPersistent()
+                    showRecoveryDialog = false
+                    formState.viewModelScope.launch {
+                        runCatching { photoStore.clearSelection(formState.photoSessionId) }
+                        pending.forEach { photo -> photoStore.cleanUnreferencedSafely(photo.id, repository) }
+                    }
+                }) { Text("Descartar") }
+            }
+        )
+    }
+
     LaunchedEffect(formState.completedSaveCount) {
         val result = formState.consumeSaveResult() ?: return@LaunchedEffect
-        val shouldExit = exitAfterSave && result.getOrDefault(false)
+        val shouldExit = exitAfterSave && result.getOrDefault(false) && !formState.hasUnsavedChanges
         exitAfterSave = false
         if (shouldExit) {
             onBack()

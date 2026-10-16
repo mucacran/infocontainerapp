@@ -9,6 +9,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.mucacran.infocontainer.data.DraftNotFoundException
 import com.mucacran.infocontainer.data.InspectionDraftRepository
+import com.mucacran.infocontainer.data.LocalPhotoStore
 import com.mucacran.infocontainer.model.DraftPhoto
 import com.mucacran.infocontainer.model.InspectionDraft
 import com.mucacran.infocontainer.model.PhotoLimits
@@ -36,6 +37,9 @@ sealed class FormLoadState {
 }
 
 class InspectionFormState(private val savedState: SavedStateHandle = SavedStateHandle()) : ViewModel() {
+    private var recoveryStore: FormRecoveryStore? = null
+    var recoveryPending by mutableStateOf(false)
+        private set
     var content by mutableStateOf(readContent("content") ?: FormContent())
         private set
     var lastSavedContent by mutableStateOf(readContent("reference") ?: FormContent())
@@ -80,6 +84,45 @@ class InspectionFormState(private val savedState: SavedStateHandle = SavedStateH
             initialized = false
             loadState = FormLoadState.Loading
         }
+    }
+
+    fun attachRecoveryStore(store: FormRecoveryStore, photoStore: LocalPhotoStore) {
+        recoveryStore = store
+        if (!isOpened) store.read()?.let { record ->
+            restorePersistent(record)
+            if (pendingCaptureId != null && !photoStore.captureExists(pendingCaptureId!!)) {
+                pendingCaptureId = null
+                persist()
+            }
+        }
+    }
+
+    private fun restorePersistent(record: FormRecoveryStore.Record) {
+        draftId = record.draftId
+        createdAt = record.createdAt
+        photoSessionId = record.sessionId
+        content = record.content
+        lastSavedContent = record.reference
+        pendingCaptureId = record.pendingCaptureId
+        hasPendingPhotoSelection = record.pendingSelection
+        loadState = if (record.draftId == null) FormLoadState.NewDraft else FormLoadState.Success(record.reference.toDraft(record.draftId))
+        initialized = true
+        isOpened = true
+        recoveryPending = true
+        persistSavedStateOnly()
+    }
+
+    fun recoverPersistent() { recoveryPending = false; persist() }
+
+    fun discardPersistent(): List<DraftPhoto> {
+        val pending = content.photos.filterNot { photo -> lastSavedContent.photos.any { it.id == photo.id } }
+        content = lastSavedContent
+        pendingCaptureId = null
+        hasPendingPhotoSelection = false
+        recoveryPending = false
+        recoveryStore?.write(null)
+        persist()
+        return pending
     }
 
     private val hasLoadedContent: Boolean
@@ -377,6 +420,16 @@ class InspectionFormState(private val savedState: SavedStateHandle = SavedStateH
         savedState["pendingSavedId"] = pendingSavedId
         writeContent("pendingSnapshot", pendingSnapshot)
         savedState["pendingWasCreate"] = pendingWasCreate
+        if (isOpened && (hasUnsavedChanges || pendingCaptureId != null || hasPendingPhotoSelection)) {
+            recoveryStore?.write(FormRecoveryStore.Record(draftId, createdAt, photoSessionId, content, lastSavedContent, pendingCaptureId, hasPendingPhotoSelection))
+        } else if (isOpened && !recoveryPending) {
+            recoveryStore?.write(null)
+        }
+    }
+
+    private fun persistSavedStateOnly() {
+        savedState["draftId"] = draftId; savedState["createdAt"] = createdAt; savedState["opened"] = isOpened
+        savedState["photoSessionId"] = photoSessionId; savedState["captureId"] = pendingCaptureId
     }
 
     // Strings and primitive collections only: no image bytes, bitmaps, external URIs or Parcelable models.

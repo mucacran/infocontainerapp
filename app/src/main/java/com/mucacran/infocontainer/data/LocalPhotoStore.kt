@@ -318,6 +318,8 @@ class LocalPhotoStore(private val context: Context) {
         captureFile(id)
     )
 
+    fun captureExists(id: String): Boolean = runCatching { captureFile(id).isFile && captureFile(id).length() > 0L }.getOrDefault(false)
+
     /** Failed imports retain this app's camera output so the caller can retry or cancel explicitly. */
     suspend fun completeCapture(id: String, success: Boolean): DraftPhoto? =
         io("No se pudo conservar la fotografía de la cámara.") {

@@ -7,10 +7,16 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.mucacran.infocontainer.data.InspectionDatabaseHelper
@@ -42,6 +48,7 @@ class PhotoFormTestActivity : ComponentActivity() {
     private var ready by mutableStateOf(false)
     val instanceId: String = UUID.randomUUID().toString()
 
+    @OptIn(ExperimentalComposeUiApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val caseId = requireNotNull(intent.getStringExtra(EXTRA_CASE_ID))
@@ -62,9 +69,12 @@ class PhotoFormTestActivity : ComponentActivity() {
         // Always install the Compose hierarchy, including after a real orientation change.
         setContent {
             InfoContainerTheme(dynamicColor = false) {
-                if (ready) {
-                    InspectionFormScreen(repository, requestedDraft, { backCalls.incrementAndGet() }, formState, photoStore)
-                } else CircularProgressIndicator()
+                // Expose existing tags to Android accessibility in this debug fixture only.
+                Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
+                    if (ready) {
+                        InspectionFormScreen(repository, requestedDraft, { backCalls.incrementAndGet() }, formState, photoStore)
+                    } else CircularProgressIndicator()
+                }
             }
         }
         lifecycleScope.launch {

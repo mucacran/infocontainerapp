@@ -107,14 +107,16 @@ Estos resultados corresponden al estado anterior a las correcciones de Codex. No
 
 ---
 
-## Continuidad Codex — 15 de octubre de 2026
+## Continuidad anterior de Codex — protección de borradores (histórico)
+
+Este bloque conserva la evidencia anterior a incorporar fotografías. Sus referencias a esquema v1, APK no instalado y rotación pendiente describen aquella revisión; el esquema y los resultados vigentes se indican en Fotografías locales y en su validación actual.
 
 ### Correcciones implementadas
 
 - `InspectionFormState`, utilizado por el formulario, mantiene contenido, referencia y operaciones en un `ViewModel` de la Activity. No vuelve a cargar un borrador ya inicializado al recomponer, al recrear la pantalla o después del primer guardado.
 - La escritura bloquea todas las entradas, selectores y navegación; una segunda solicitud se ignora. Solo el éxito confirma la instantánea normalizada enviada. El error conserva el contenido y la referencia anterior, desbloquea la edición y muestra un mensaje; si falta la fila, el mensaje lo distingue de un error genérico.
 - El repositorio separa `createDraft` y `updateDraft`, conserva los timestamps de la instantánea y no usa reemplazo ni alta alternativa al editar.
-- `onUpgrade` rechaza versiones no soportadas. Producción continúa en v1, sin borrar tablas ni registros.
+- En esa revisión, `onUpgrade` rechazaba versiones no soportadas y producción continuaba en v1, sin borrar tablas ni registros. La etapa de fotografías posterior implementa la migración aditiva v1→v2.
 
 ### Verificaciones ejecutadas por Codex
 
@@ -138,14 +140,14 @@ En el proyecto local, con JBR 21 de Android Studio y dependencias ya disponibles
 
 ### Pasos manuales pendientes de rotación
 
-Una vez autorizada la instalación de esta revisión:
+Instrucciones de aquella revisión (la instalación debug ya fue autorizada):
 
 1. **Borrador nuevo:** abrir Nueva inspección, escribir `CSQU3054383`, ISO `45G1`, seleccionar Inventario, cambiar fecha/hora y escribir `Rotación nuevo 📦` en observaciones. Anotar la fecha/hora elegida y no guardar.
 2. Girar a horizontal y regresar a vertical. Comprobar identificador, ISO, motivo, fecha/hora y observaciones. Pulsar Atrás: debe aparecer “Cambios sin guardar”. Elegir “Continuar editando” y comprobar que conserva todos los valores.
 3. **Borrador existente:** abrir uno guardado; cambiar observaciones a `Rotación existente 📦`, seleccionar otro motivo y cambiar fecha/hora, sin guardar. Anotar también identificador e ISO.
 4. Repetir ambos giros y verificar todos los campos. Pulsar Atrás: debe aparecer la advertencia; “Continuar editando” debe conservar la edición y el mismo borrador. No eliminar el registro ni descartar sus datos para realizar esta comprobación.
 
-El cierre de verificación visual Android y ambos casos de rotación queda pendiente de realizar manualmente. Los tres defectos tienen corrección de código y las comprobaciones instrumentadas SQLite y unitarias indicadas arriba.
+En aquella revisión, la verificación visual Android y ambos casos de rotación quedaban pendientes. La validación actual de fotografías, más abajo, sustituye ese estado de continuidad.
 
 ---
 
@@ -164,6 +166,33 @@ La sección Fotografías aparece antes de los campos manuales. Permite comenzar 
 - **Cierre/reapertura:** después de Guardar, texto y fotografías se recuperan desde SQLite y archivos privados al abrir el borrador. La restauración de cambios sin guardar depende del estado de instancia entregado por Android; no equivale a guardar un borrador ni garantiza recuperación tras retirar la tarea, borrar almacenamiento o desinstalar.
 
 Las bases, capturas y carpetas de fotos/diarios están excluidas de Git. No se añadieron servicios de red ni dependencias para análisis o transferencia.
+
+### Validación actual de fotografías — 15 de octubre de 2026
+
+- Carpeta comprobada: `C:/proyectosMucacran/infocontainerapp`. Se conservaron los cambios existentes, incluido el commit `68cd40a` que apareció durante el trabajo; Codex no creó commits ni hizo push.
+- **36 unitarias afectadas aprobadas, 0 fallos:** 14 de protección del formulario, 16 de fotografías/estado restaurable, 3 de igualdad de contenido y 3 del repositorio de prueba. Se ejecutaron con JBR 21 y `--offline`; las pruebas del repositorio de prueba no sustituyen SQLite real.
+- **Compilación:** `assembleDebug` y `assembleDebugAndroidTest` correctos. **`lintDebug`: 0 errores y 20 advertencias**: 7 `GradleDependency`, 1 `AndroidGradlePluginVersion`, 1 `NewerVersionAvailable`, 1 `OldTargetApi`, 1 `UnusedResources`, 2 `ExifInterface`, 1 `UsableSpace` y 6 `UseKtx`. Las nueve adicionales recomiendan AndroidX EXIF, APIs de espacio y extensiones Kotlin; la prueba de orientación pasó en API 36 y la copia usa un margen libre conservador. Siguen siendo recomendaciones técnicas; no se actualizaron dependencias para ocultarlas. El compilador también avisa del destino futuro de `@StringRes` en `InspectionType`, fuera del recuento Lint.
+- **Teléfono físico:** único dispositivo autorizado `ANNXVB5708002966` (ABR‑NX3, API 36). Instalación incremental de ambos APK con `adb install -r -t`: correcta, sin desinstalar ni borrar datos.
+- **39 casos instrumentados distintos aprobados, 0 fallidos en la última ejecución de cada caso:** 19 de archivos originales, orientación, límites, cancelación, recuperación del diario y limpieza; 14 de SQLite real, asociaciones, transacciones, edición inexistente, migración aditiva v1→v2 y rechazo de intento v2→v3 mediante apertura real; 5 de interfaz real; y 1 de contexto. La v3 de rechazo es sólo un intento de prueba, sin esquema histórico ni migración implementada.
+- **Rotación automatizada en teléfono aprobada, nuevo y existente:** edición por accesibilidad, giro real a horizontal y vertical, comparación de todos los campos/IDs con la instantánea anterior, lectura de campos y miniaturas en la UI, y aviso real “Cambios sin guardar”. También pasaron descarte conservando el original guardado, recreación de Activity (sin afirmar muerte del proceso), guardado/cierre/reapertura con bytes y metadatos idénticos, y Guardar desde el aviso sin salir mientras queda una captura por reintentar.
+- **Aislamiento comprobado:** bases `infocontainer_real_test_UUID.db` / `form_photo_ui_test_UUID.db`, imágenes sintéticas y almacenamiento bajo carpetas UUID de caché. La limpieza de UI/archivos sólo alcanza esos fixtures; no abre ni elimina `infocontainer.db`, originales reales ni galería. Las pruebas SQLite cierran conexiones y conservan sus bases de prueba.
+- **Conservación en el teléfono:** antes y después de instalación y pruebas se compararon huellas de todas las filas de la BD de producción y del original vinculado, sin visualizar la imagen. El borrador y su fotografía existentes permanecieron idénticos; `integrity_check` devolvió `ok`. La BD del teléfono ya estaba en v2; la migración v1→v2 se acredita con el fixture histórico separado.
+- **Arnés de UI y reintentos:** el intento anterior en emulador API 37 falló en cuatro pruebas antes del cuerpo por `Espresso 3.5.1 / InputManager.getInstance`. Se sustituyó el arnés por `ActivityScenario`, accesibilidad y gestos Android nativos sincronizados a frames, sin nuevas dependencias. En el teléfono hubo **48 ejecuciones: 39 aprobadas y 9 fallidas del arnés en intentos anteriores** (39 iniciales: 34/5; repetición de 5: 1/4; repetición sólo de las 4 restantes: 4/0). No se repitieron los casos ya superados. Al consolidar el resultado más reciente de cada caso: **39/39 aprobados**. Los logs conservan también los intentos fallidos.
+- **Ajustes finales revisados:** la recuperación del diario espera al formulario cargado y al resultado externo para no reemplazar la solicitud del selector; Guardar no abandona una captura pendiente; el importador aplica cantidad/presupuesto durante la copia y expone las copias válidas de un lote parcial; los pendientes activan el aviso al salir aun sin cambios textuales.
+
+Comandos de compilación y unitarias (sin acceso a red):
+
+```powershell
+.\gradlew.bat --offline :app:testDebugUnitTest --tests 'com.mucacran.infocontainer.ui.*' --tests 'com.mucacran.infocontainer.data.InspectionDraftRepositoryTest' --tests 'com.mucacran.infocontainer.util.UnsavedChangesDetectionTest' --console=plain
+.\gradlew.bat --offline :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --console=plain --max-workers=2 '-Pkotlin.compiler.execution.strategy=in-process'
+adb -s ANNXVB5708002966 shell am instrument -w -r com.mucacran.infocontainer.test/androidx.test.runner.AndroidJUnitRunner
+```
+
+Los logs locales están en `app/build/reports/` (excluidos de Git); `photos-verification-summary.json` consolida casos, ejecuciones y unitarias. La automatización usa fotografías sintéticas; no sustituye la comprobación óptica ni la selección humana desde la galería. En el teléfono físico `ANNXVB5708002966` se cancelaron cámara y selector sin crear adjuntos. Sergio confirmó dos fotos en cada sesión: el borrador nuevo pasó de 1 a 4 fotografías y el borrador existente de 2 a 4, siempre como cambios sin guardar antes de la interrupción. Tras `force-stop`, ambos mostraron Recuperar; se verificó el conteo 4/12, se guardó una sola vez y se reabrieron con sus asociaciones SQLite. La rotación y el guardado/reapertura indicados arriba sí quedaron automatizados en el teléfono; no se presentan como comprobaciones visuales humanas.
+
+Como comprobación de interrupción se ejecutó `am force-stop` y reapertura de la Activity con ese diario pendiente. La causa fue que el diario no tenía un registro durable del formulario, su referencia y el `photoSessionId`; la Activity siempre iniciaba en Inicio. Se implementó `FormRecoveryStore` en `noBackupFilesDir/inspection_form_recovery.json`, con escritura AtomicFile fuera del hilo principal y diálogo explícito Recuperar/Descartar. Tras la corrección, el borrador nuevo y el existente recuperaron campos, miniaturas y sesiones, se guardaron una sola vez y se reabrieron con las asociaciones SQLite presentes. `force-stop` no se presenta como terminación espontánea del sistema. No se borraron datos ni se desinstaló la aplicación.
+
+Clasificación de las 20 advertencias actuales de Lint: 9 son disponibilidad futura de herramientas o dependencias (7 `GradleDependency`, `AndroidGradlePluginVersion` y `NewerVersionAvailable`); 1 es compatibilidad de `targetSdk` (`OldTargetApi`); 2 recomiendan AndroidX para EXIF, relevante para orientación y compatibilidad; 1 recomienda `StorageManager` para considerar caché liberable, relevante para el margen de espacio; 6 son equivalencias KTX (`toUri`, `scale`, `createBitmap`); y 1 es un recurso sin uso. Ninguna concede permisos de cámara o almacenamiento, expone archivos, cambia la política de respaldo o implica una fuga de privacidad. Las dos advertencias de almacenamiento/EXIF son las únicas nuevas con relación directa a esta etapa y fueron cubiertas con validaciones y pruebas en API 36; no se cambiaron dependencias sólo para silenciarlas.
 
 ### Comprobaciones manuales de cámara y selector en teléfono
 

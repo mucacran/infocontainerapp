@@ -18,6 +18,7 @@ import com.mucacran.infocontainer.ui.DraftListScreen
 import com.mucacran.infocontainer.ui.HomeScreen
 import com.mucacran.infocontainer.ui.InspectionFormScreen
 import com.mucacran.infocontainer.ui.InspectionFormState
+import com.mucacran.infocontainer.ui.FormRecoveryStore
 import com.mucacran.infocontainer.ui.theme.InfoContainerTheme
 
 enum class Screen {
@@ -35,6 +36,7 @@ class MainActivity : ComponentActivity() {
         val photoStore = LocalPhotoStore(applicationContext)
         repository = SqliteInspectionDraftRepository(dbHelper, photoExists = photoStore::exists)
         val formState = ViewModelProvider(this)[InspectionFormState::class.java]
+        formState.attachRecoveryStore(FormRecoveryStore(applicationContext), photoStore)
 
         enableEdgeToEdge()
         setContent {
@@ -51,7 +53,7 @@ fun InfoContainerApp(
     formState: InspectionFormState,
     photoStore: LocalPhotoStore
 ) {
-    var currentScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
+    var currentScreen by rememberSaveable { mutableStateOf(if (formState.recoveryPending) Screen.NEW_INSPECTION else Screen.HOME) }
     var selectedDraftId by rememberSaveable { mutableStateOf<String?>(null) }
     var previousScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
 

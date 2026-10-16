@@ -112,14 +112,18 @@ fun rememberPhotoActions(
         }
     }
 
-    LaunchedEffect(state.photoSessionId) {
+    // Wait for the saved form and any external result before recovering its journal.
+    // A restored picker request must keep its identity until its callback arrives.
+    LaunchedEffect(state.photoSessionId, state.isOpened, state.loadState is FormLoadState.Loading, state.externalPhotoRequest) {
+        if (!state.isOpened || state.loadState is FormLoadState.Loading || state.externalPhotoRequest != null) {
+            return@LaunchedEffect
+        }
         val pendingSelection = runCatching { store.hasPendingSelection(state.photoSessionId) }.getOrElse {
             state.reportPhotoError("No se pudo recuperar la selección pendiente. Vuelve a intentarlo.")
             false
         }
         state.setPendingPhotoSelection(pendingSelection)
-        if (pendingSelection && !state.isImportingPhotos && !state.isSaving && state.externalPhotoRequest != "camera") {
-            state.finishPhotoRequest(clearCapture = false)
+        if (pendingSelection && state.canEdit) {
             if (state.canEdit) importJournal(emptyList())
         }
     }
