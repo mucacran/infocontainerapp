@@ -70,7 +70,8 @@ fun InspectionFormScreen(
     onBack: () -> Unit,
     formState: InspectionFormState,
     photoStore: LocalPhotoStore,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onOpenConnection: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -237,6 +238,15 @@ fun InspectionFormScreen(
                             id = if (loadState is FormLoadState.Success) R.string.title_edit_inspection else R.string.title_new_inspection
                         )
                     )
+                },
+                actions = {
+                    if (onOpenConnection != null) {
+                        TextButton(
+                            onClick = onOpenConnection,
+                            enabled = formState.canEdit && !formState.recoveryPending,
+                            modifier = Modifier.testTag("form_connection")
+                        ) { Text(stringResource(R.string.connection_title)) }
+                    }
                 },
                 navigationIcon = {
                     IconButton(

@@ -19,12 +19,15 @@ import com.mucacran.infocontainer.ui.HomeScreen
 import com.mucacran.infocontainer.ui.InspectionFormScreen
 import com.mucacran.infocontainer.ui.InspectionFormState
 import com.mucacran.infocontainer.ui.FormRecoveryStore
+import com.mucacran.infocontainer.ui.ConnectionScreen
+import com.mucacran.infocontainer.ui.ConnectionState
 import com.mucacran.infocontainer.ui.theme.InfoContainerTheme
 
 enum class Screen {
     HOME,
     NEW_INSPECTION,
-    SAVED_INSPECTIONS
+    SAVED_INSPECTIONS,
+    CONNECTION
 }
 
 class MainActivity : ComponentActivity() {
@@ -36,12 +39,13 @@ class MainActivity : ComponentActivity() {
         val photoStore = LocalPhotoStore(applicationContext)
         repository = SqliteInspectionDraftRepository(dbHelper, photoExists = photoStore::exists)
         val formState = ViewModelProvider(this)[InspectionFormState::class.java]
+        val connectionState = ViewModelProvider(this)[ConnectionState::class.java]
         formState.attachRecoveryStore(FormRecoveryStore(applicationContext), photoStore)
 
         enableEdgeToEdge()
         setContent {
             InfoContainerTheme {
-                InfoContainerApp(repository = repository, formState = formState, photoStore = photoStore)
+                InfoContainerApp(repository = repository, formState = formState, photoStore = photoStore, connectionState = connectionState)
             }
         }
     }
@@ -51,11 +55,19 @@ class MainActivity : ComponentActivity() {
 fun InfoContainerApp(
     repository: InspectionDraftRepository,
     formState: InspectionFormState,
-    photoStore: LocalPhotoStore
+    photoStore: LocalPhotoStore,
+    connectionState: ConnectionState
 ) {
     var currentScreen by rememberSaveable { mutableStateOf(if (formState.recoveryPending) Screen.NEW_INSPECTION else Screen.HOME) }
     var selectedDraftId by rememberSaveable { mutableStateOf<String?>(null) }
     var previousScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
+    var connectionReturnScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
+
+    fun openConnection(from: Screen) {
+        connectionState.open()
+        connectionReturnScreen = from
+        currentScreen = Screen.CONNECTION
+    }
 
     when (currentScreen) {
         Screen.HOME -> {
@@ -68,7 +80,8 @@ fun InfoContainerApp(
                 },
                 onNavigateToSavedInspections = {
                     currentScreen = Screen.SAVED_INSPECTIONS
-                }
+                },
+                onNavigateToConnection = { openConnection(Screen.HOME) }
             )
         }
         Screen.NEW_INSPECTION -> {
@@ -79,6 +92,9 @@ fun InfoContainerApp(
                 draftId = selectedDraftId,
                 onBack = {
                     if (formState.canLeave) currentScreen = previousScreen
+                },
+                onOpenConnection = {
+                    if (formState.canEdit && !formState.recoveryPending) openConnection(Screen.NEW_INSPECTION)
                 }
             )
         }
@@ -100,6 +116,12 @@ fun InfoContainerApp(
                 },
                 onBack = { currentScreen = Screen.HOME }
             )
+        }
+        Screen.CONNECTION -> {
+            ConnectionScreen(connectionState, onBack = {
+                connectionState.close()
+                currentScreen = connectionReturnScreen
+            })
         }
     }
 }

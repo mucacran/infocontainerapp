@@ -165,7 +165,7 @@ La sección Fotografías aparece antes de los campos manuales. Permite comenzar 
 - **Cancelación:** cancelar cámara/selector no crea filas ni adjuntos vacíos. Una captura cuya importación falla conserva su temporal para Reintentar o Quitar captura pendiente. Una selección parcialmente copiada conserva las imágenes válidas y ofrece reintento. Cerrar una selección pendiente retira sus metadatos/permisos, sin borrar originales.
 - **Cierre/reapertura:** después de Guardar, texto y fotografías se recuperan desde SQLite y archivos privados al abrir el borrador. La restauración de cambios sin guardar depende del estado de instancia entregado por Android; no equivale a guardar un borrador ni garantiza recuperación tras retirar la tarea, borrar almacenamiento o desinstalar.
 
-Las bases, capturas y carpetas de fotos/diarios están excluidas de Git. No se añadieron servicios de red ni dependencias para análisis o transferencia.
+Las bases, capturas y carpetas de fotos/diarios están excluidas de Git. La etapa de fotografías no añadió servicios de red ni dependencias para análisis o transferencia. La primera lectura de conexión se describe al final.
 
 ### Validación actual de fotografías — 15 de octubre de 2026
 
@@ -210,9 +210,51 @@ La comprobación de respaldo/restauración sigue pendiente. La política conjunt
 ## Limitaciones y Siguiente Paso
 
 ### Limitaciones Actuales
-- Esta etapa **NO** realiza llamadas de red, sincronización ni autenticación con la API REST de WordPress.
+- La pantalla Conexión permite una única lectura autenticada de comprobación, descrita abajo. No hay sincronización, envío de fotografías ni escrituras remotas.
 - La app escribe borradores en su almacenamiento privado local; Android puede incluirlos en respaldos según la configuración descrita arriba. No existe sincronización propia hacia WordPress.
 - Se incluye captura y selección local de fotografías. El análisis por IA y la certificación de condición estructural permanecen fuera del alcance.
 
 ### Siguiente Paso
-- Completar las verificaciones Android pendientes antes de cerrar esta etapa. El contrato REST con WordPress (módulos `InfoContainer_Validator` e `InfoContainer_REST_API`) permanece como trabajo posterior, fuera de este encargo.
+- Observar el resultado real de la comprobación desde Android con la contraseña de aplicación introducida físicamente por Sergio. La persistencia de credenciales y cualquier sincronización quedan para una etapa posterior.
+
+## Primera lectura autenticada de WordPress — 17 de octubre de 2026
+
+Desde Inicio o desde la barra del formulario se puede abrir **Conexión**. Volver regresa a la pantalla anterior sin guardar, descartar ni reinicializar el formulario pendiente. El acceso se deshabilita durante guardados, operaciones de fotografías o una recuperación todavía sin confirmar. No se cambian el applicationId, esquema SQLite, archivos de fotografías ni reglas de respaldo.
+
+- Destino no secreto centralizado en `WordPressConfig.BASE_URL`: `https://loinde.com.ec`.
+- Sólo al pulsar **Probar conexión** se hace `GET /wp-json/infocontainer/v1/containers?per_page=1&_fields=id`, con Basic Auth. No se consulta el servidor al abrir, recomponer o girar la pantalla.
+- Usuario y contraseña se conservan únicamente en memoria del `ConnectionState` de esa sesión de pantalla. No se registran en `SavedStateHandle`, `rememberSaveable`, SQLite, preferencias, archivos, URLs, BuildConfig ni logs. El ViewModel conserva una solicitud en curso al girar; salir cancela la solicitud y limpia las entradas. Tras muerte del proceso hay que introducirlas de nuevo. La pantalla oculta la contraseña, excluye el autofill y bloquea capturas/miniaturas de recientes mientras está visible.
+- HTTPS con confianza y validación de hostname normales de Android; tráfico HTTP deshabilitado. No hay certificados adicionales ni excepciones TLS, y no se traslada ninguna configuración de Kaspersky al teléfono.
+- OkHttp 4.12.0 permite desactivar explícitamente reintentos, redirecciones y autenticación automática. Una guardia adicional limita a un intercambio GET por pulsación, incluso ante un `503 Retry-After: 0`. Las credenciales sólo se añaden al endpoint del origen configurado. Sin caché en disco ni interceptores de registros.
+- Red y lectura de respuesta en los trabajadores de OkHttp; límites de conexión/lectura/escritura de 10 segundos y total de 20 segundos. La UI bloquea envíos repetidos mientras espera y permite salir/cancelar.
+- Éxito sólo para HTTP 200 con un documento UTF-8 completo cuya raíz sea una lista JSON válida, incluyendo `[]`. Gson 2.11.0 en `Strictness.STRICT` verifica la sintaxis completa, con un máximo de respuesta de 64 KiB. Objetos, HTML, contenido vacío, JSON mal formado o con contenido adicional y redirecciones no son éxito. No se almacenan ni se muestran los registros recibidos.
+- Estados: comprobando, conexión correcta, credenciales rechazadas (401), permisos insuficientes (403), fallo TLS, conexión no disponible, timeout y respuesta inválida. No se muestran detalles de excepciones ni cuerpos del servidor.
+
+### Prueba física por Sergio
+
+1. Abrir **InfoContainer → Conexión**, o **Conexión** en la barra del formulario pendiente. Si aparece Recuperar, confirmar primero la recuperación deseada.
+2. Verificar el destino `https://loinde.com.ec`. Introducir `infocontainer_android` y la **contraseña de aplicación** físicamente en el teléfono; no enviarla por chat ni usar la contraseña normal de WordPress.
+3. Pulsar una sola vez **Probar conexión** y esperar el resultado (máximo aproximado: 20 segundos). `[]` también debe mostrar **Conexión correcta. Acceso de lectura confirmado.**
+4. Comunicar únicamente el mensaje final mostrado, sin contraseña, encabezados ni capturas con datos sensibles. Si hay fallo TLS, conservar la validación normal; no instalar autoridades de Kaspersky ni aceptar certificados sin validar.
+5. Pulsar **Regresar**: el formulario debe conservar su trabajo pendiente. Al volver a Conexión, las credenciales estarán vacías.
+
+Las comprobaciones HTTP previas de PowerShell (anónima 401 y autenticada 200 con `[]`) fueron informadas por Sergio y no certifican Android. **La autenticación real de Android permanece pendiente hasta observar su resultado.** Esta etapa no usa OpenAI, no modifica WordPress y no sube fotografías. El resumen vigente de continuidad está en [CONTINUIDAD.md](CONTINUIDAD.md).
+
+### Verificación ejecutada en esta etapa
+
+- **Compilación:** `assembleDebug` y `assembleDebugAndroidTest` correctos con JBR 21. **Lint:** 0 errores y 16 advertencias (4 `GradleDependency`, 1 `NewerVersionAvailable`, 1 `OldTargetApi`, 1 `UnusedResources`, 2 `ExifInterface`, 1 `UsableSpace`, 6 `UseKtx`). Sigue el aviso de compilador previo sobre `@StringRes` en `InspectionType`.
+- **30 unitarias pertinentes aprobadas, 0 fallos/errores/omitidas:** 13 de transporte nuevo, 14 de protección de formulario y 3 de igualdad de contenido. La matriz HTTPS local incluye `[]`, lista con ID, 24 contenidos incompatibles/malformados, UTF-8 inválido, tamaño máximo, 401, 403, 301/302/303/307/308 sin seguimiento, 503/408 sin segundo GET, desconexión, timeout, cancelación, certificado desconocido, hostname incorrecto y rechazo de HTTP. La CA sintética está exclusivamente en las dependencias/código de pruebas JVM; nunca en Android.
+- **3 instrumentadas nuevas aprobadas en el teléfono `ANNXVB5708002966`**, 0 fallos: formulario nuevo y existente conservan todos los campos, referencia, ID, fecha y sesión al abrir/cerrar Conexión, sin escrituras ni solicitudes; la tercera comprueba contraseña oculta, doble pulsación, dos giros físicos con una sola invocación falsa pendiente, cancelación y limpieza al cerrar/reabrir. El repositorio de estas pruebas vive sólo en memoria; su transporte falso no abre sockets. Duración informada por runner: 78,666 segundos. No se repitieron los casos anteriores de cámara, fotos ni recuperación.
+- **Actualización instalada:** ambos APK con `adb install -r -t`, sin desinstalar ni borrar datos; app de producción abierta al terminar. Huellas SHA-256 de `infocontainer.db` y los 11 archivos de fotografías privadas idénticas antes y después de actualización y pruebas. No se abrió ninguna imagen para esta comparación.
+- **Solicitudes:** WordPress alojado **0**, OpenAI **0**. HTTPS REST simulado de loopback **74 en toda la preparación**, de las cuales **40 corresponden a la suite final aprobada** y 34 a la ejecución que detectó la validación de cadena omitida. Dos intentos previos del fixture fallaron en TLS sin llegar a HTTP porque Windows devolvía un hostname local distinto de `localhost`; sólo se corrigió el fixture. Ni esa corrección ni las pruebas relajaron la validación de Android o modificaron Kaspersky.
+- **Evidencia local excluida de Git:** `app/build/reports/connection/build-verification.log`, `connection/navigation-phone.txt`, `connection/device-preservation-{before,after}.txt`, `app/build/reports/connection-network-verification-summary.json`, XML JVM en `app/build/test-results/testDebugUnitTest/` e informes Lint. No commits, push ni despliegues web.
+
+Comprobaciones realizadas (después de resolver las dos dependencias de producción y las de pruebas):
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
+.\gradlew.bat --offline :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug :app:testDebugUnitTest --tests 'com.mucacran.infocontainer.network.*' --tests 'com.mucacran.infocontainer.ui.InspectionFormStateTest' --tests 'com.mucacran.infocontainer.util.UnsavedChangesDetectionTest' --console=plain --max-workers=2 '-Pkotlin.compiler.execution.strategy=in-process'
+adb -s ANNXVB5708002966 install -r -t app/build/outputs/apk/debug/app-debug.apk
+adb -s ANNXVB5708002966 install -r -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb -s ANNXVB5708002966 shell am instrument -w -r -e class com.mucacran.infocontainer.ui.ConnectionNavigationTest com.mucacran.infocontainer.test/androidx.test.runner.AndroidJUnitRunner
+```

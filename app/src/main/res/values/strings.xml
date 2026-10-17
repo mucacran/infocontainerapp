@@ -77,4 +77,19 @@
     <string name="error_observations_too_long">Las observaciones superan el límite de 10.000 caracteres.</string>
     <string name="error_inspection_type_required">Debe seleccionar un motivo de inspección.</string>
     <string name="error_inspection_type_invalid">Motivo de inspección no válido.</string>
+    <!-- Primera comprobación autenticada, sin persistencia de credenciales. -->
+    <string name="connection_title">Conexión</string>
+    <string name="connection_instructions">Introduce tu usuario de WordPress y una contraseña de aplicación para comprobar el acceso de lectura.</string>
+    <string name="connection_username">Usuario de WordPress</string>
+    <string name="connection_application_password">Contraseña de aplicación</string>
+    <string name="connection_test">Probar conexión</string>
+    <string name="connection_checking">Comprobando…</string>
+    <string name="connection_success">Conexión correcta. Acceso de lectura confirmado.</string>
+    <string name="connection_rejected">Credenciales rechazadas (401). Revisa el usuario y la contraseña de aplicación.</string>
+    <string name="connection_forbidden">Permisos insuficientes (403). El usuario necesita acceso de lectura a InfoContainer.</string>
+    <string name="connection_tls_failure">Fallo TLS. No se pudo validar la conexión segura con el servidor.</string>
+    <string name="connection_unavailable">Conexión no disponible. Revisa la red y vuelve a intentarlo.</string>
+    <string name="connection_timeout">Tiempo de espera agotado. Vuelve a intentarlo cuando haya conexión.</string>
+    <string name="connection_invalid_response">Respuesta inválida o inesperada. Se requiere HTTP 200 y una lista JSON válida; no se siguen redirecciones.</string>
+    <string name="connection_memory_notice">La contraseña permanece sólo en memoria mientras esta pantalla está abierta y se descarta al salir. Esta prueba únicamente consulta la lista; tus borradores y fotografías siguen en el teléfono.</string>
 </resources>

@@ -6,5 +6,9 @@
             android:name=".ui.PhotoFormTestActivity"
             android:exported="false"
             android:theme="@style/Theme.InfoContainer" />
+        <activity
+            android:name=".ui.ConnectionNavigationTestActivity"
+            android:exported="false"
+            android:theme="@style/Theme.InfoContainer" />
     </application>
 </manifest>

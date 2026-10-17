@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -27,6 +28,7 @@ import com.mucacran.infocontainer.R
 fun HomeScreen(
     onNavigateToNewInspection: () -> Unit,
     onNavigateToSavedInspections: () -> Unit,
+    onNavigateToConnection: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
@@ -99,6 +101,12 @@ fun HomeScreen(
                         text = stringResource(id = R.string.btn_saved_inspections),
                         style = MaterialTheme.typography.titleMedium
                     )
+                }
+                OutlinedButton(
+                    onClick = onNavigateToConnection,
+                    modifier = Modifier.fillMaxWidth().testTag("home_connection")
+                ) {
+                    Text(stringResource(R.string.connection_title))
                 }
             }
 
