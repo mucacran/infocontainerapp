@@ -91,5 +91,5 @@
     <string name="connection_unavailable">Conexión no disponible. Revisa la red y vuelve a intentarlo.</string>
     <string name="connection_timeout">Tiempo de espera agotado. Vuelve a intentarlo cuando haya conexión.</string>
     <string name="connection_invalid_response">Respuesta inválida o inesperada. Se requiere HTTP 200 y una lista JSON válida; no se siguen redirecciones.</string>
-    <string name="connection_memory_notice">La contraseña permanece sólo en memoria mientras esta pantalla está abierta y se descarta al salir. Esta prueba únicamente consulta la lista; tus borradores y fotografías siguen en el teléfono.</string>
+    <string name="connection_memory_notice">La contraseña permanece sólo en memoria mientras esta pantalla está abierta y se descarta al salir. Probar conexión únicamente consulta la lista. La prueba de fotografías requiere su propia selección y confirmación.</string>
 </resources>

@@ -6,18 +6,24 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.mucacran.infocontainer.InfoContainerApp
 import com.mucacran.infocontainer.data.InspectionDraftRepository
 import com.mucacran.infocontainer.data.LocalPhotoStore
+import com.mucacran.infocontainer.data.AiAnalysisCoordinator
 import com.mucacran.infocontainer.model.InspectionDraft
 import com.mucacran.infocontainer.network.ConnectionProbe
 import com.mucacran.infocontainer.network.ConnectionResult
+import com.mucacran.infocontainer.network.AiExecutionGate
+import com.mucacran.infocontainer.network.SimulatedAiApi
 import com.mucacran.infocontainer.ui.theme.InfoContainerTheme
 import java.io.File
 import java.util.UUID
@@ -32,6 +38,10 @@ class ConnectionNavigationTestActivity : ComponentActivity() {
     lateinit var connectionState: ConnectionState
         private set
     lateinit var fixture: ConnectionNavigationFixture
+        private set
+    var aiAnalysis: AiAnalysisState? = null
+        private set
+    var aiDemo: AiDemoState? = null
         private set
     val instanceId: String = UUID.randomUUID().toString()
 
@@ -55,10 +65,24 @@ class ConnectionNavigationTestActivity : ComponentActivity() {
                 return ConnectionState(fixture.probe) as T
             }
         })[ConnectionState::class.java]
+        val testAnalysis = intent.getBooleanExtra(EXTRA_ANALYSIS, false)
+        if (testAnalysis) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            aiDemo = ViewModelProvider(this)[AiDemoState::class.java]
+            aiAnalysis = ViewModelProvider(this, object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    require(modelClass == AiAnalysisState::class.java)
+                    return AiAnalysisState(fixture.aiApi, AiExecutionGate(false), reviewTimeoutMillis = 2_000) as T
+                }
+            })[AiAnalysisState::class.java].also { it.attachCoordinator(AiAnalysisCoordinator.simulated(fixture.aiApi)) }
+        }
         setContent {
             InfoContainerTheme(dynamicColor = false) {
                 Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
-                    InfoContainerApp(fixture, formState, photoStore, connectionState)
+                    Box(if (testAnalysis) Modifier.widthIn(max = 300.dp).heightIn(max = 480.dp) else Modifier) {
+                        InfoContainerApp(fixture, formState, photoStore, connectionState, aiDemo = aiDemo, aiAnalysis = aiAnalysis)
+                    }
                 }
             }
         }
@@ -66,11 +90,13 @@ class ConnectionNavigationTestActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_CASE_ID = "connection_test_case_id"
+        const val EXTRA_ANALYSIS = "connection_test_analysis"
     }
 }
 
 /** No credential is retained by the fake probe, and no production repository is constructed. */
 class ConnectionNavigationFixture : ViewModel(), InspectionDraftRepository {
+    val aiApi = SimulatedAiApi()
     val requests = AtomicInteger(0)
     val cancellations = AtomicInteger(0)
     val writes = AtomicInteger(0)

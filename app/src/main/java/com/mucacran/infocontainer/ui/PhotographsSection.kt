@@ -268,7 +268,7 @@ fun PhotographsSection(
 }
 
 @Composable
-private fun PhotoPreview(photo: DraftPhoto, store: LocalPhotoStore, maxEdge: Int, modifier: Modifier) {
+internal fun PhotoPreview(photo: DraftPhoto, store: LocalPhotoStore, maxEdge: Int, modifier: Modifier) {
     var failed by rememberSaveable(photo.id, maxEdge) { mutableStateOf(false) }
     val bitmap by produceState<Bitmap?>(null, photo.id, maxEdge) {
         try {

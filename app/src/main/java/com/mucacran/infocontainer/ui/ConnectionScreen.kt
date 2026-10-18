@@ -37,10 +37,21 @@ import androidx.compose.ui.unit.dp
 import com.mucacran.infocontainer.R
 import com.mucacran.infocontainer.network.ConnectionResult
 import com.mucacran.infocontainer.network.WordPressConfig
+import com.mucacran.infocontainer.data.LocalPhotoStore
+import com.mucacran.infocontainer.data.AiIdentificationCoordinator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ConnectionScreen(state: ConnectionState, onBack: () -> Unit) {
+fun ConnectionScreen(
+    state: ConnectionState,
+    onBack: () -> Unit,
+    photoTransfers: PhotoTransferState? = null,
+    photoStore: LocalPhotoStore? = null,
+    aiDemo: AiDemoState? = null
+    , aiCoordinator: AiIdentificationCoordinator? = null
+    , onApplyIdentification: (String, String) -> Unit = { _, _ -> }
+    , aiAnalysis: AiAnalysisState? = null
+) {
     val context = LocalContext.current
     // Exclude credentials from screenshots/recents and Android's autofill hierarchy.
     DisposableEffect(context) {
@@ -71,7 +82,7 @@ fun ConnectionScreen(state: ConnectionState, onBack: () -> Unit) {
     ) { padding ->
         Column(
             modifier = Modifier.fillMaxSize().padding(padding).imePadding()
-                .verticalScroll(rememberScrollState()).padding(24.dp),
+                .verticalScroll(rememberScrollState()).testTag("connection_scroll").padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(WordPressConfig.BASE_URL, style = MaterialTheme.typography.titleMedium)
@@ -79,7 +90,7 @@ fun ConnectionScreen(state: ConnectionState, onBack: () -> Unit) {
             OutlinedTextField(
                 value = state.username,
                 onValueChange = state::updateUsername,
-                enabled = !state.isChecking,
+                enabled = !state.isChecking && photoTransfers?.isBusy != true,
                 label = { Text(stringResource(R.string.connection_username)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii),
@@ -88,7 +99,7 @@ fun ConnectionScreen(state: ConnectionState, onBack: () -> Unit) {
             OutlinedTextField(
                 value = state.password,
                 onValueChange = state::updatePassword,
-                enabled = !state.isChecking,
+                enabled = !state.isChecking && photoTransfers?.isBusy != true,
                 label = { Text(stringResource(R.string.connection_application_password)) },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
@@ -96,8 +107,8 @@ fun ConnectionScreen(state: ConnectionState, onBack: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().testTag("connection_password")
             )
             Button(
-                onClick = state::testConnection,
-                enabled = state.canTest,
+                onClick = { if (photoTransfers?.isBusy != true) state.testConnection() },
+                enabled = state.canTest && photoTransfers?.isBusy != true,
                 modifier = Modifier.fillMaxWidth().testTag("connection_test")
             ) { Text(stringResource(R.string.connection_test)) }
             if (state.isChecking) CircularProgressIndicator()
@@ -118,6 +129,11 @@ fun ConnectionScreen(state: ConnectionState, onBack: () -> Unit) {
                 )
             }
             Text(stringResource(R.string.connection_memory_notice), style = MaterialTheme.typography.bodySmall)
+            if (photoTransfers != null && photoStore != null) {
+                PhotoTransferPanel(photoTransfers, state, photoStore)
+            }
+            if (aiDemo != null) AiDemoPanel(aiDemo, aiCoordinator, state.username, state.password, photoTransfers?.selectedPhoto, onApplyIdentification)
+            if (aiAnalysis != null) AiAnalysisPanel(aiAnalysis, state.username, state.password)
         }
     }
 }

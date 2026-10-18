@@ -2,6 +2,12 @@
 
 Sistema de registro e inspección de contenedores para Mucacrán S.A.S.
 
+## Corrección vigente de la interfaz IA — 18 de octubre de 2026
+
+**Conexión → Análisis de inspección remota → Ejecutar flujo simulado** ya muestra la propuesta del coordinador, el informe editable y las tres revisiones sin depender de cargar previamente otra demostración. Los controles usan la misma fuente `AiAnalysisState`; Aceptar, Registrar edición y Rechazar ocupan filas completas y terminan con confirmación o error visible. Se conserva `AiExecutionGate(false)`, y la simulación debug sólo admite transportes falsos sin HTTP.
+
+Verificación de esta corrección: 8 pruebas JVM y 5 casos de interfaz distintos aprobados, compilación/Lint correctos (0 errores, 16 advertencias previas), debug instalado incrementalmente. Huellas de BD y 13 originales privados idénticas antes/después. Hostinger/OpenAI: 0 solicitudes. Diagnóstico, archivos, evidencias y pasos físicos en [CORRECCION_INFORME_IA.md](docs/CORRECCION_INFORME_IA.md). Los resultados históricos de las secciones siguientes corresponden a sus etapas indicadas.
+
 ## Información del Proyecto
 - **Ruta Local Activa:** `C:/proyectosMucacran/infocontainerapp`
 - **Lenguaje:** Kotlin 2.2.10
@@ -210,12 +216,12 @@ La comprobación de respaldo/restauración sigue pendiente. La política conjunt
 ## Limitaciones y Siguiente Paso
 
 ### Limitaciones Actuales
-- La pantalla Conexión permite una única lectura autenticada de comprobación, descrita abajo. No hay sincronización, envío de fotografías ni escrituras remotas.
+- Conexión mantiene la lectura de comprobación y añade una prueba supervisada de envío/recuperación de una fotografía por acción, descrita al final. No hay sincronización automática.
 - La app escribe borradores en su almacenamiento privado local; Android puede incluirlos en respaldos según la configuración descrita arriba. No existe sincronización propia hacia WordPress.
 - Se incluye captura y selección local de fotografías. El análisis por IA y la certificación de condición estructural permanecen fuera del alcance.
 
 ### Siguiente Paso
-- Observar el resultado real de la comprobación desde Android con la contraseña de aplicación introducida físicamente por Sergio. La persistencia de credenciales y cualquier sincronización quedan para una etapa posterior.
+- Ejecutar, cuando se autorice, la prueba física aislada de fotografías con WordPress 1.3.5. El contexto recibido para esta etapa informa que la autenticación de lectura ya fue comprobada físicamente. La persistencia de credenciales, creación automática de registros y sincronización quedan para otra etapa.
 
 ## Primera lectura autenticada de WordPress — 17 de octubre de 2026
 
@@ -258,3 +264,32 @@ adb -s ANNXVB5708002966 install -r -t app/build/outputs/apk/debug/app-debug.apk
 adb -s ANNXVB5708002966 install -r -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb -s ANNXVB5708002966 shell am instrument -w -r -e class com.mucacran.infocontainer.ui.ConnectionNavigationTest com.mucacran.infocontainer.test/androidx.test.runner.AndroidJUnitRunner
 ```
+
+## Fotografías autenticadas con WordPress 1.3.5 — verificación local
+
+La pantalla **Conexión → Preparar prueba de fotografía** permite seleccionar un borrador guardado y una miniatura, asociarlos con una inspección remota de prueba existente en `draft`, enviar una foto multipart y consultar/verificar los bytes remotos. Conserva el flujo principal basado en fotografías y admite un borrador local incompleto, sin exigir identificador manual. Las credenciales permanecen sólo en memoria durante Conexión. La información recibida para esta etapa indica que Sergio ya comprobó físicamente la autenticación HTTPS de lectura; las pruebas actuales no repiten aquella comprobación.
+
+El UUID de la foto local es el `client_photo_id` estable. Antes de enviar se escribe un diario AtomicFile privado en `noBackupFilesDir/photo_transfers/`, con destino, payload inmutable y estado pendiente/confirmado. Timeout, cierre o reinicio conservan el mismo plan para reintentar manualmente. Una respuesta 201 o 200 sólo confirma tras comprobar inspección, UUID, categoría, MIME, tamaño y SHA-256. El cuerpo se transmite sin cambiar el original; las fotos que exceden 10 MiB/10.000 píxeles por lado/20 MP se rechazan sin comprimirlas.
+
+La recuperación consulta la lista y los metadatos, y descarga bytes autenticados mediante streaming para comprobar tamaño/hash y relación local, sin sustituir originales ni publicar URLs. No se crean contenedores o inspecciones automáticamente: para la primera prueba se introduce un ID de inspección aislada ya preparada. El contrato recibido no facilita lectura de estado de inspección; la confirmación es explícita y WordPress aplica `draft` mediante sus respuestas 409.
+
+**Resultado local de esta etapa:**
+
+- `assembleDebug`, `assembleDebugAndroidTest` y `lintDebug` correctos, JBR 21, dependencias existentes reutilizadas. **Lint: 0 errores y 16 advertencias previas**, sin advertencias nuevas. Continúa el aviso previo del compilador sobre `@StringRes` de `InspectionType`.
+- **30 unitarias nuevas aprobadas**, 0 fallos/errores/omitidas: 20 del transporte HTTPS simulado y 10 del coordinador. Cubren multipart exacto y opcionales, 201/200, reintentos manuales tras timeout, UUID estable, ambos 409, 401/403/413/415, errores de red/TLS, redirecciones/reintentos automáticos bloqueados, respuestas inválidas, relación remota e integridad de descarga. El coordinador demuestra intención durable antes de red y ningún guardado/modificación del borrador.
+- **21 instrumentadas distintas aprobadas**, 0 fallos: 7 de validación y límites de subida, 10 del diario real AtomicFile y 4 de sesión con API falsa sin sockets. Incluyen concurrencia, corrupción conservada, asociación inmutable, cancelación/limpieza, reapertura sin autoenvío, doble pulsación y rechazo de asociaciones inconsistentes. Hubo 24 ejecuciones: las 20 iniciales y las 4 de sesión después del ajuste que desactiva la selección anterior si falla elegir otro borrador. No se repitieron los casos históricos de cámara, galería ni recuperación del formulario. Estas pruebas de sesión no se presentan como rotación física nueva.
+- APK debug y APK de pruebas instalados incrementalmente en `ANNXVB5708002966`, sin desinstalar ni borrar datos. **SHA-256 de `infocontainer.db` y de los 11 originales privados idénticos antes/después**. La app principal quedó abierta al finalizar. No se visualizaron imágenes existentes.
+- **Solicitudes de esta etapa:** WordPress alojado **0**, OpenAI **0**, HTTPS simulado loopback **66**. Las instrumentadas usan transportes falsos sin conexiones de red. Ninguna petición real a WordPress está acreditada por estas pruebas.
+- Evidencias locales excluidas de Git: `app/build/reports/photo-transfer/build.log`, `build-final-selection.log`, `network-summary.json`, `verification-summary.json`, `instrumentation-phone.txt`, `session-final-phone.txt`, `device-before.txt`, `device-after.txt`, informes Lint y XML JVM. El hash del APK final queda en el resumen. Sin commits, push, pull ni despliegues web.
+
+**La integración real de fotografías permanece pendiente de autorización y prueba física.** Las [instrucciones exactas para Sergio](docs/PRUEBA_FOTOGRAFIAS_WORDPRESS.md) incluyen preparación de la inspección aislada, imagen sintética de 640×400, subida/reintento/consulta/integridad y límites de esta implementación. La imagen está en `app/build/reports/photo-transfer/infocontainer-prueba.png`; el generador reproducible es `tools/New-PhotoTransferFixture.ps1`.
+
+### Creación de inspección sintética desde Android (debug)
+
+La pantalla **Conexión → Preparar prueba de fotografía** muestra en debug el botón **Crear inspección de prueba**. Tras una confirmación explícita, Android genera un identificador ISO 6346 válido, hace `POST /containers` y luego `POST /containers/{id}/inspections` con `receipt`, fecha UTC y observación sintética. La asociación de contenedor e inspección se conserva en `noBackupFilesDir` sin credenciales; al reabrir no se repiten los POST. Si una operación queda incierta, no se repite automáticamente: conservar la pantalla y consultar con Sergio antes de actuar. La creación no usa borradores locales ni fotografías y no inicia la subida.
+
+La prueba local simulada cubre los dos POST y la validación ISO; no se hicieron solicitudes reales a Hostinger. Para la prueba física, Sergio debe introducir usuario y contraseña de aplicación en el teléfono, abrir esa sección, pulsar el botón, confirmar el diálogo y comunicar únicamente el identificador del contenedor, el ID de inspección y el estado mostrado.
+
+No hubo migración SQLite ni cambios de datos existentes. Los riesgos pendientes son el ID remoto facilitado manualmente, límites PHP reales y resultados inciertos de red: verificar el ID antes del primer envío y conservar siempre la misma asociación/UUID para reintentar. El diario rechaza corrupción o conflictos; no los resuelve borrando registros. La persistencia de credenciales, creación automática de contenedores/inspecciones, conversión de fotos grandes y reincorporación de descargas a borradores quedan fuera de esta etapa.
+
+Los archivos cambiados y el estado de continuidad están en [CONTINUIDAD.md](CONTINUIDAD.md).

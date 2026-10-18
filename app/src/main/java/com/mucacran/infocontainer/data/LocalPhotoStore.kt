@@ -347,6 +347,15 @@ class LocalPhotoStore(private val context: Context) {
         file.isFile && file.length() == photo.byteSize && photo.byteSize > 0L
     }.getOrDefault(false)
 
+    /** Resolves only an existing private original; uploading never creates or rewrites it. */
+    internal fun originalForUpload(photo: DraftPhoto): File {
+        val file = photoFile(photo.id)
+        if (!file.isFile || photo.byteSize <= 0L || file.length() != photo.byteSize) {
+            throw PhotoStorageException("La fotografía ya no está disponible o cambió en este teléfono.")
+        }
+        return file
+    }
+
     suspend fun preview(photo: DraftPhoto, maxEdge: Int = 320): Bitmap =
         io("No se pudo mostrar la fotografía. El archivo puede estar dañado o ya no estar disponible.") {
             require(maxEdge in 1..2048) { "El tamaño de vista previa debe estar entre 1 y 2048 píxeles." }

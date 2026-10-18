@@ -21,6 +21,16 @@ import com.mucacran.infocontainer.ui.InspectionFormState
 import com.mucacran.infocontainer.ui.FormRecoveryStore
 import com.mucacran.infocontainer.ui.ConnectionScreen
 import com.mucacran.infocontainer.ui.ConnectionState
+import com.mucacran.infocontainer.ui.PhotoTransferState
+import com.mucacran.infocontainer.ui.AiDemoState
+import com.mucacran.infocontainer.ui.AiAnalysisState
+import com.mucacran.infocontainer.data.AiIdentificationCoordinator
+import com.mucacran.infocontainer.data.AiAnalysisCoordinator
+import com.mucacran.infocontainer.network.AiExecutionGate
+import com.mucacran.infocontainer.network.WordPressAiApi
+import com.mucacran.infocontainer.data.PhotoUploadSource
+import com.mucacran.infocontainer.data.transfer.PhotoTransferStore
+import com.mucacran.infocontainer.data.TestInspectionStore
 import com.mucacran.infocontainer.ui.theme.InfoContainerTheme
 
 enum class Screen {
@@ -40,12 +50,25 @@ class MainActivity : ComponentActivity() {
         repository = SqliteInspectionDraftRepository(dbHelper, photoExists = photoStore::exists)
         val formState = ViewModelProvider(this)[InspectionFormState::class.java]
         val connectionState = ViewModelProvider(this)[ConnectionState::class.java]
+        val photoTransfers = ViewModelProvider(this, object : ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
+                PhotoTransferState(debugEnabled = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) as T
+        })[PhotoTransferState::class.java]
+        val aiDemo = ViewModelProvider(this)[AiDemoState::class.java]
+        val aiCoordinator = AiIdentificationCoordinator(WordPressAiApi(), photoStore, AiExecutionGate(false))
+        val aiAnalysis = ViewModelProvider(this, object : ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T = AiAnalysisState(WordPressAiApi(), AiExecutionGate(false)) as T
+        })[AiAnalysisState::class.java]
+        val isDebug = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (isDebug) aiAnalysis.attachCoordinator(AiAnalysisCoordinator.simulated())
+        photoTransfers.attach(repository, PhotoUploadSource(photoStore), PhotoTransferStore(applicationContext))
+        photoTransfers.attachTestStore(TestInspectionStore(applicationContext))
         formState.attachRecoveryStore(FormRecoveryStore(applicationContext), photoStore)
 
         enableEdgeToEdge()
         setContent {
             InfoContainerTheme {
-                InfoContainerApp(repository = repository, formState = formState, photoStore = photoStore, connectionState = connectionState)
+                InfoContainerApp(repository = repository, formState = formState, photoStore = photoStore, connectionState = connectionState, photoTransfers = photoTransfers, aiDemo = if (isDebug) aiDemo else null, aiCoordinator = aiCoordinator, aiAnalysis = if (isDebug) aiAnalysis else null)
             }
         }
     }
@@ -56,7 +79,11 @@ fun InfoContainerApp(
     repository: InspectionDraftRepository,
     formState: InspectionFormState,
     photoStore: LocalPhotoStore,
-    connectionState: ConnectionState
+    connectionState: ConnectionState,
+    photoTransfers: PhotoTransferState? = null,
+    aiDemo: AiDemoState? = null
+    , aiCoordinator: AiIdentificationCoordinator? = null
+    , aiAnalysis: AiAnalysisState? = null
 ) {
     var currentScreen by rememberSaveable { mutableStateOf(if (formState.recoveryPending) Screen.NEW_INSPECTION else Screen.HOME) }
     var selectedDraftId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -64,6 +91,7 @@ fun InfoContainerApp(
     var connectionReturnScreen by rememberSaveable { mutableStateOf(Screen.HOME) }
 
     fun openConnection(from: Screen) {
+        photoTransfers?.close()
         connectionState.open()
         connectionReturnScreen = from
         currentScreen = Screen.CONNECTION
@@ -118,7 +146,8 @@ fun InfoContainerApp(
             )
         }
         Screen.CONNECTION -> {
-            ConnectionScreen(connectionState, onBack = {
+            ConnectionScreen(connectionState, photoTransfers = photoTransfers, photoStore = photoStore, aiDemo = aiDemo, aiCoordinator = aiCoordinator, aiAnalysis = aiAnalysis, onApplyIdentification = { identifier, iso -> formState.updateContent(formState.content.copy(containerIdentifier = identifier, isoCode = iso)) }, onBack = {
+                photoTransfers?.close()
                 connectionState.close()
                 currentScreen = connectionReturnScreen
             })
