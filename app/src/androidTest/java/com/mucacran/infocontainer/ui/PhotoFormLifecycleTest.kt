@@ -435,12 +435,13 @@ class PhotoFormLifecycleTest {
 
     private fun formOrder(tag: String?): Int? = when {
         tag == "form_photos" || tag?.startsWith("photo_") == true -> 0
-        tag == "form_container" -> 1
-        tag == "form_iso" -> 2
-        tag?.startsWith("form_type_") == true -> 3
-        tag == "form_datetime" -> 4
-        tag == "form_observations" -> 5
-        tag == "form_save" -> 6
+        tag?.startsWith("form_type_") == true -> 1
+        tag == "form_datetime" -> 2
+        tag == "form_analyze" -> 3
+        tag == "form_save" -> 4
+        tag == "form_container" -> 5
+        tag == "form_iso" -> 6
+        tag == "form_observations" -> 7
         else -> null
     }
 

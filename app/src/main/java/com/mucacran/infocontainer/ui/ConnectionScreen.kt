@@ -39,6 +39,7 @@ import com.mucacran.infocontainer.network.ConnectionResult
 import com.mucacran.infocontainer.network.WordPressConfig
 import com.mucacran.infocontainer.data.LocalPhotoStore
 import com.mucacran.infocontainer.data.AiIdentificationCoordinator
+import com.mucacran.infocontainer.model.DraftPhoto
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,10 +50,12 @@ fun ConnectionScreen(
     photoStore: LocalPhotoStore? = null,
     aiDemo: AiDemoState? = null
     , aiCoordinator: AiIdentificationCoordinator? = null
+    , identificationPhotos: List<DraftPhoto> = emptyList()
     , onApplyIdentification: (String, String) -> Unit = { _, _ -> }
     , aiAnalysis: AiAnalysisState? = null
 ) {
     val context = LocalContext.current
+    val realIdentificationBusy = aiDemo?.realBusy == true
     // Exclude credentials from screenshots/recents and Android's autofill hierarchy.
     DisposableEffect(context) {
         val activity = context as? Activity
@@ -67,13 +70,14 @@ fun ConnectionScreen(
             if (previousAutofill != null) decor.importantForAutofill = previousAutofill
         }
     }
-    BackHandler(onBack = onBack)
+    BackHandler(onBack = { if (!realIdentificationBusy) onBack() })
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.connection_title)) },
                 navigationIcon = {
-                    TextButton(onClick = onBack, modifier = Modifier.testTag("connection_back")) {
+                    TextButton(onClick = onBack, enabled = !realIdentificationBusy,
+                        modifier = Modifier.testTag("connection_back")) {
                         Text(stringResource(R.string.cd_back_button))
                     }
                 }
@@ -90,7 +94,7 @@ fun ConnectionScreen(
             OutlinedTextField(
                 value = state.username,
                 onValueChange = state::updateUsername,
-                enabled = !state.isChecking && photoTransfers?.isBusy != true,
+                enabled = !state.isChecking && !realIdentificationBusy && photoTransfers?.isBusy != true,
                 label = { Text(stringResource(R.string.connection_username)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii),
@@ -99,7 +103,7 @@ fun ConnectionScreen(
             OutlinedTextField(
                 value = state.password,
                 onValueChange = state::updatePassword,
-                enabled = !state.isChecking && photoTransfers?.isBusy != true,
+                enabled = !state.isChecking && !realIdentificationBusy && photoTransfers?.isBusy != true,
                 label = { Text(stringResource(R.string.connection_application_password)) },
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
@@ -107,8 +111,8 @@ fun ConnectionScreen(
                 modifier = Modifier.fillMaxWidth().testTag("connection_password")
             )
             Button(
-                onClick = { if (photoTransfers?.isBusy != true) state.testConnection() },
-                enabled = state.canTest && photoTransfers?.isBusy != true,
+                onClick = { if (photoTransfers?.isBusy != true && !realIdentificationBusy) state.testConnection() },
+                enabled = state.canTest && !realIdentificationBusy && photoTransfers?.isBusy != true,
                 modifier = Modifier.fillMaxWidth().testTag("connection_test")
             ) { Text(stringResource(R.string.connection_test)) }
             if (state.isChecking) CircularProgressIndicator()
@@ -132,7 +136,8 @@ fun ConnectionScreen(
             if (photoTransfers != null && photoStore != null) {
                 PhotoTransferPanel(photoTransfers, state, photoStore)
             }
-            if (aiDemo != null) AiDemoPanel(aiDemo, aiCoordinator, state.username, state.password, photoTransfers?.selectedPhoto, onApplyIdentification)
+            if (aiDemo != null) AiDemoPanel(aiDemo, aiCoordinator, state.username, state.password,
+                identificationPhotos, photoStore, onApplyIdentification)
             if (aiAnalysis != null) AiAnalysisPanel(aiAnalysis, state.username, state.password)
         }
     }

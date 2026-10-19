@@ -25,6 +25,7 @@ import com.mucacran.infocontainer.ui.PhotoTransferState
 import com.mucacran.infocontainer.ui.AiDemoState
 import com.mucacran.infocontainer.ui.AiAnalysisState
 import com.mucacran.infocontainer.data.AiIdentificationCoordinator
+import com.mucacran.infocontainer.data.IdentificationAttemptStore
 import com.mucacran.infocontainer.data.AiAnalysisCoordinator
 import com.mucacran.infocontainer.network.AiExecutionGate
 import com.mucacran.infocontainer.network.WordPressAiApi
@@ -55,11 +56,14 @@ class MainActivity : ComponentActivity() {
                 PhotoTransferState(debugEnabled = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) as T
         })[PhotoTransferState::class.java]
         val aiDemo = ViewModelProvider(this)[AiDemoState::class.java]
-        val aiCoordinator = AiIdentificationCoordinator(WordPressAiApi(), photoStore, AiExecutionGate(false))
+        val aiCoordinator = AiIdentificationCoordinator(
+            WordPressAiApi(), photoStore, AiExecutionGate(false), IdentificationAttemptStore(applicationContext)
+        )
         val aiAnalysis = ViewModelProvider(this, object : ViewModelProvider.Factory {
             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T = AiAnalysisState(WordPressAiApi(), AiExecutionGate(false)) as T
         })[AiAnalysisState::class.java]
         val isDebug = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (isDebug) aiDemo.attachRealCoordinator(aiCoordinator)
         if (isDebug) aiAnalysis.attachCoordinator(AiAnalysisCoordinator.simulated())
         photoTransfers.attach(repository, PhotoUploadSource(photoStore), PhotoTransferStore(applicationContext))
         photoTransfers.attachTestStore(TestInspectionStore(applicationContext))
@@ -146,7 +150,10 @@ fun InfoContainerApp(
             )
         }
         Screen.CONNECTION -> {
-            ConnectionScreen(connectionState, photoTransfers = photoTransfers, photoStore = photoStore, aiDemo = aiDemo, aiCoordinator = aiCoordinator, aiAnalysis = aiAnalysis, onApplyIdentification = { identifier, iso -> formState.updateContent(formState.content.copy(containerIdentifier = identifier, isoCode = iso)) }, onBack = {
+            ConnectionScreen(connectionState, photoTransfers = photoTransfers, photoStore = photoStore,
+                aiDemo = aiDemo, aiCoordinator = aiCoordinator, aiAnalysis = aiAnalysis,
+                identificationPhotos = if (connectionReturnScreen == Screen.NEW_INSPECTION) formState.content.photos else emptyList(),
+                onApplyIdentification = { identifier, iso -> formState.updateContent(formState.content.copy(containerIdentifier = identifier, isoCode = iso)) }, onBack = {
                 photoTransfers?.close()
                 connectionState.close()
                 currentScreen = connectionReturnScreen

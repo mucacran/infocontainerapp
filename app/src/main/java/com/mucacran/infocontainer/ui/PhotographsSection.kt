@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import com.mucacran.infocontainer.R
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewModelScope
@@ -213,7 +215,9 @@ fun PhotographsSection(
     Card(modifier = Modifier.fillMaxWidth().testTag("form_photos")) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Fotografías (${state.content.photos.size}/${PhotoLimits.MAX_PHOTOS})", style = MaterialTheme.typography.titleLarge)
-            Text("Añada fotografías del mismo contenedor. Puede empezar con una y añadir más después.")
+            Text(stringResource(R.string.inspection_photo_start))
+            Text(stringResource(R.string.inspection_photo_guide), modifier = Modifier.testTag("photo_first_image_guidance"))
+            Text("Añade fotografías del mismo contenedor. Puedes empezar con una y añadir más después.")
             Text("Solo en este teléfono. Estas imágenes aún no se han analizado ni enviado.", style = MaterialTheme.typography.bodySmall)
             Text("JPEG, PNG o WebP · hasta 30 MiB por imagen y 150 MiB por borrador.", style = MaterialTheme.typography.bodySmall)
             Button(onClick = actions.takePhoto, enabled = state.canEdit, modifier = Modifier.testTag("photo_camera")) {

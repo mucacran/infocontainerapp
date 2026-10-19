@@ -1,5 +1,15 @@
 # Continuidad de InfoContainer — 18 de octubre de 2026
 
+## Etapa vigente: primera identificación real preparada, sin ejecución real
+
+El debug integra la identificación fotográfica desde el formulario y Conexión con `AiIdentificationCoordinator` y `WordPressAiApi`; conserva el simulador y `AiExecutionGate(false)` para análisis y revisiones. Un diálogo exige confirmar que la imagen elegida es sintética antes de habilitar «Enviar una vez». El resultado público de WordPress se muestra con estado, identificador, ISO, candidatos, legibilidad y advertencias; siempre queda pendiente de revisión humana y no modifica el formulario.
+
+`IdentificationAttemptStore` reserva UUID, foto y SHA-256 en `noBackupFilesDir` antes de la solicitud, sin guardar credenciales ni imagen. El primer intento bloquea cualquier POST posterior, incluso tras timeout/reinicio; con ID remoto conocido sólo se permite consultar ese mismo run por GET. El transporte HTTPS envía una sola vez el multipart `file`/`client_request_id`, sin redirecciones ni reintentos automáticos y con tiempos límite. No se han realizado llamadas reales al hosting ni a OpenAI. Android controla un POST; el número de llamadas internas del plugin alojado 1.3.6 al proveedor no puede confirmarse con el contrato local 1.3.5 y debe verificarse antes de que Sergio pulse.
+
+La imagen sintética `app/build/reports/ai-identification/identificador-sintetico.png` (TSTU4855933/22G1) se copió a `Download/infocontainer-identificacion-sintetica-20261018.png` en el teléfono con SHA-256 coincidente. Sergio añade esa imagen a un formulario local de prueba, abre Conexión desde él, introduce allí sus credenciales de aplicación, selecciona la foto y confirma un único envío. Debe comunicar sólo el estado, ID remoto y lectura propuesta; ante resultado incierto no repetir. La operación real aún no está comprobada y el primer envío queda reservado a su acción física. Véase README para los pasos.
+
+Las pruebas de transporte y coordinación usan respuestas simuladas. Pasaron 26 JVM focalizadas (10 transporte HTTPS simulado, 8 seguridad del coordinador, 8 regresión de análisis) y 6 instrumentadas en el teléfono (4 interfaz con API falsa sin sockets, 2 diario); 0 fallos. Compilación debug y APK instrumentado correctos; Lint 0 errores/16 advertencias. Ambos APK se instalaron incrementalmente con `-r -t` y la app principal quedó abierta. El SHA-256 de la BD y de los 13 originales privados es idéntico antes/después; el diario de la app real no existe aún. **Solicitudes REST reales al hosting: 0; llamadas reales a OpenAI: 0.** No se ejecutó Git ni se cambió WordPress/Hostinger.
+
 ## Etapa vigente: corrección de informe y revisiones IA simulados
 
 La desaparición se debía a que `AiAnalysisPanel` componía el informe y los botones sólo si `AiDemoState.analysis` existía, mientras `runSimulated()` guardaba la respuesta en `AiAnalysisState.run`. El panel usa ahora esa propuesta y mantiene el editor en el mismo ViewModel. El desplazamiento de Conexión ya era válido; antes no existían controles adicionales que desplazar.

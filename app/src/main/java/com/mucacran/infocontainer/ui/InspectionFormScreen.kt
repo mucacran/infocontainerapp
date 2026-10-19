@@ -146,11 +146,6 @@ fun InspectionFormScreen(
     val inspectionTypeValidation = ContainerValidator.validateInspectionType(inspectionType)
     val observationsValidation = ContainerValidator.validateObservations(observations)
 
-    val isFormFullyValid = containerValidation.isValid &&
-            isoCodeValidation.isValid &&
-            inspectionTypeValidation.isValid &&
-            observationsValidation.isValid
-
     fun performSave(leaveAfterSuccess: Boolean = false) {
         if (!formState.canEdit) return
         exitAfterSave = leaveAfterSuccess
@@ -394,6 +389,131 @@ fun InspectionFormScreen(
                         }
                     }
 
+                    // Campo 3: Motivo de la inspección
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = stringResource(id = R.string.label_inspection_type),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            InspectionType.entries.forEach { typeOption ->
+                                val isSelected = inspectionType.equals(typeOption.code, ignoreCase = true)
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = {
+                                        formState.updateContent(formState.content.copy(inspectionType = typeOption.code))
+                                    },
+                                    enabled = formState.canEdit,
+                                    modifier = Modifier.testTag("form_type_${typeOption.code}"),
+                                    label = {
+                                        Text(
+                                            text = stringResource(id = typeOption.labelRes),
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                )
+                            }
+                        }
+
+                        if (inspectionType.isBlank() && inspectionTypeValidation.errorMessageRes != null) {
+                            Text(
+                                text = stringResource(id = inspectionTypeValidation.errorMessageRes),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                            )
+                        }
+                    }
+
+                    // Campo 4: Fecha y hora de la inspección
+                    OutlinedCard(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.label_inspected_at),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = DateTimeUtils.formatForDisplay(inspectedAt),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = stringResource(R.string.inspection_time_automatic),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = {
+                                    if (!formState.canEdit) return@OutlinedButton
+                                    DateTimeUtils.showDateTimePicker(
+                                        context = context,
+                                        currentIsoString = inspectedAt,
+                                        onDateTimeSelected = { updatedIso ->
+                                            formState.updateContent(formState.content.copy(inspectedAt = updatedIso))
+                                        }
+                                    )
+                                },
+                                enabled = formState.canEdit,
+                                modifier = Modifier.align(Alignment.End).testTag("form_datetime")
+                            ) {
+                                Text(text = stringResource(id = R.string.btn_change_date_time))
+                            }
+                        }
+                    }
+
+                    PhotoAnalysisSection(formState)
+
+                    // Botón de guardar borrador
+                    Button(
+                        onClick = { performSave() },
+                        enabled = formState.canEdit,
+                        modifier = Modifier
+                            .testTag("form_save")
+                            .fillMaxWidth()
+                            .height(52.dp)
+                    ) {
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.height(24.dp).width(24.dp)
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(id = R.string.btn_save_draft),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = stringResource(R.string.manual_details_title),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = stringResource(R.string.manual_details_notice),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+
                     // Campo 1: Identificador del contenedor
                     Column(modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
@@ -469,93 +589,6 @@ fun InspectionFormScreen(
                         }
                     }
 
-                    // Campo 3: Motivo de la inspección
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = stringResource(id = R.string.label_inspection_type),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            InspectionType.entries.forEach { typeOption ->
-                                val isSelected = inspectionType.equals(typeOption.code, ignoreCase = true)
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = {
-                                        formState.updateContent(formState.content.copy(inspectionType = typeOption.code))
-                                    },
-                                    enabled = formState.canEdit,
-                                    modifier = Modifier.testTag("form_type_${typeOption.code}"),
-                                    label = {
-                                        Text(
-                                            text = stringResource(id = typeOption.labelRes),
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                    },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                    )
-                                )
-                            }
-                        }
-
-                        if (inspectionType.isBlank() && inspectionTypeValidation.errorMessageRes != null) {
-                            Text(
-                                text = stringResource(id = inspectionTypeValidation.errorMessageRes),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
-                            )
-                        }
-                    }
-
-                    // Campo 4: Fecha y hora de la inspección
-                    OutlinedCard(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
-                        ) {
-                            Text(
-                                text = stringResource(id = R.string.label_inspected_at),
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.secondary
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = DateTimeUtils.formatForDisplay(inspectedAt),
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedButton(
-                                onClick = {
-                                    if (!formState.canEdit) return@OutlinedButton
-                                    DateTimeUtils.showDateTimePicker(
-                                        context = context,
-                                        currentIsoString = inspectedAt,
-                                        onDateTimeSelected = { updatedIso ->
-                                            formState.updateContent(formState.content.copy(inspectedAt = updatedIso))
-                                        }
-                                    )
-                                },
-                                enabled = formState.canEdit,
-                                modifier = Modifier.align(Alignment.End).testTag("form_datetime")
-                            ) {
-                                Text(text = stringResource(id = R.string.btn_change_date_time))
-                            }
-                        }
-                    }
-
                     // Campo 5: Observaciones (Opcional)
                     Column(modifier = Modifier.fillMaxWidth()) {
                         val currentCodePoints = ContainerValidator.countUnicodeCodePoints(observations)
@@ -592,62 +625,6 @@ fun InspectionFormScreen(
                             },
                             modifier = Modifier.fillMaxWidth().testTag("form_observations")
                         )
-                    }
-
-                    // Resumen de estado del borrador
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isFormFullyValid) {
-                                MaterialTheme.colorScheme.secondaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.tertiaryContainer
-                            }
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = if (isFormFullyValid) "✓" else "!",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isFormFullyValid) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onTertiaryContainer,
-                                modifier = Modifier.padding(end = 8.dp)
-                            )
-                            Text(
-                                text = stringResource(
-                                    id = if (isFormFullyValid) R.string.draft_status_complete else R.string.draft_status_incomplete
-                                ),
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = if (isFormFullyValid) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                        }
-                    }
-
-                    // Botón de guardar borrador
-                    Button(
-                        onClick = { performSave() },
-                        enabled = formState.canEdit,
-                        modifier = Modifier
-                            .testTag("form_save")
-                            .fillMaxWidth()
-                            .height(52.dp)
-                    ) {
-                        if (isSaving) {
-                            CircularProgressIndicator(
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.height(24.dp).width(24.dp)
-                            )
-                        } else {
-                            Text(
-                                text = stringResource(id = R.string.btn_save_draft),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))

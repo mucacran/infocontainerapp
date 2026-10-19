@@ -20,12 +20,12 @@
     <string name="type_unselected">Sin motivo seleccionado</string>
 
     <!-- Etiquetas del formulario -->
-    <string name="label_container_id">Identificador del contenedor *</string>
+    <string name="label_container_id">Identificador del contenedor (opcional)</string>
     <string name="hint_container_id">Ej. CSQU3054383</string>
     <string name="label_iso_code">Código ISO (opcional)</string>
     <string name="hint_iso_code">Ej. 45G1</string>
     <string name="label_inspection_type">Motivo de la inspección *</string>
-    <string name="label_inspected_at">Fecha y hora de inspección *</string>
+    <string name="label_inspected_at">Fecha y hora de inspección</string>
     <string name="label_observations">Observaciones (opcional)</string>
     <string name="hint_observations">Ingrese detalles adicionales del estado o la carga&#8230;</string>
     <string name="normalized_preview">Valor normalizado: %1$s</string>
@@ -92,4 +92,18 @@
     <string name="connection_timeout">Tiempo de espera agotado. Vuelve a intentarlo cuando haya conexión.</string>
     <string name="connection_invalid_response">Respuesta inválida o inesperada. Se requiere HTTP 200 y una lista JSON válida; no se siguen redirecciones.</string>
     <string name="connection_memory_notice">La contraseña permanece sólo en memoria mientras esta pantalla está abierta y se descarta al salir. Probar conexión únicamente consulta la lista. La prueba de fotografías requiere su propia selección y confirmación.</string>
+    <!-- Flujo fotográfico: la integración completa aún no está habilitada. -->
+    <string name="inspection_photo_start">Empieza con fotografías; no necesitas escribir el identificador ni el código ISO.</string>
+    <string name="inspection_photo_guide">Recomendamos fotografiar primero las puertas traseras, donde suelen estar las marcas de identificación. También puedes seleccionar fotografías existentes, en cualquier orden.</string>
+    <string name="inspection_time_automatic">Registrada automáticamente al iniciar la inspección. Puedes corregirla si hace falta.</string>
+    <string name="manual_details_title">Datos manuales opcionales</string>
+    <string name="manual_details_notice">Puedes dejarlos vacíos y guardar el borrador. Los datos identificados y las observaciones de IA deberán revisarse antes del guardado definitivo, cuando el servicio esté habilitado.</string>
+    <string name="photo_analysis_title">Análisis de fotografías</string>
+    <string name="btn_send_analyze_photos">Enviar y analizar fotografías</string>
+    <string name="photo_analysis_busy">Espera a que termine la operación actual.</string>
+    <string name="photo_analysis_recovery">Recupera o resuelve las fotografías pendientes antes de solicitar el análisis.</string>
+    <string name="photo_analysis_photos_required">Añade al menos una fotografía del contenedor y selecciona el motivo.</string>
+    <string name="photo_analysis_reason_required">Selecciona el motivo de inspección mediante los botones.</string>
+    <string name="photo_analysis_unavailable">El análisis desde este formulario todavía no está habilitado. Guarda un borrador en este teléfono para conservar las fotografías y continuar después, incluso sin conexión.</string>
+    <string name="photo_analysis_scope">El análisis se solicitará únicamente al pulsar este botón cuando esté habilitado. La revisión de fotografías no certifica hermeticidad ni condiciones estructurales.</string>
 </resources>
